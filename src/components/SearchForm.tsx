@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SearchFormProps } from "@/types/websearch";
 import { validateSearchQuery, getDefaultModel, getDefaultWriteModel, loadModelSettings, saveModelSettings, clearModelSettings } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
   const [writeModel, setWriteModel] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Initialize models after component mounts to avoid SSR issues
   useEffect(() => {
@@ -17,6 +18,25 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
     setModel(savedSettings.searchModel);
     setWriteModel(savedSettings.writeModel);
   }, []);
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      // Reset height to auto to get the correct scrollHeight
+      textarea.style.height = 'auto';
+      // Set height to scrollHeight, with min and max limits
+      const newHeight = Math.min(Math.max(textarea.scrollHeight, 48), 500);
+      textarea.style.height = `${newHeight}px`;
+      
+      // If content exceeds max height, enable scrolling
+      if (textarea.scrollHeight > 500) {
+        textarea.style.overflowY = 'auto';
+      } else {
+        textarea.style.overflowY = 'hidden';
+      }
+    }
+  }, [query]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +57,7 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
     onSubmit(query.trim(), finalModel, finalWriteModel);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setQuery(value);
     
@@ -72,7 +92,7 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <label 
@@ -83,20 +103,24 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
             Search Query
           </label>
           <div className="relative">
-            <input
+            <textarea
+              ref={textareaRef}
               id="search-query"
-              type="text"
               value={query}
               onChange={handleInputChange}
               placeholder="Enter your search query..."
               disabled={isLoading || disabled}
-              className="w-full px-4 py-3 rounded-lg shadow-sm transition-all duration-200 theme-transition"
+              className="w-full px-4 py-3 rounded-lg shadow-sm transition-all duration-200 theme-transition resize-none"
               style={{
                 backgroundColor: disabled ? 'var(--color-input-disabled)' : 'var(--color-input)',
                 borderColor: error ? 'var(--color-error)' : 'var(--color-input-border)',
                 borderWidth: '1px',
                 color: disabled ? 'var(--color-text-muted)' : 'var(--color-text)',
-                cursor: disabled ? 'not-allowed' : 'text'
+                cursor: disabled ? 'not-allowed' : 'text',
+                minHeight: '48px',
+                maxHeight: '500px',
+                lineHeight: '1.5',
+                overflowY: 'auto'
               }}
               onFocus={(e) => {
                 if (!disabled) {
@@ -112,10 +136,11 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
               maxLength={50000}
               autoComplete="off"
               autoFocus
+              rows={1}
             />
             {query.length > 0 && (
               <div 
-                className="absolute right-3 top-3 text-xs theme-transition"
+                className="absolute right-5 top-3 text-xs theme-transition pointer-events-none"
                 style={{ color: 'var(--color-text-muted)' }}
               >
                 {query.length}/50000

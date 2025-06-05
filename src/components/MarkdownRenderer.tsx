@@ -229,21 +229,20 @@ export default function MarkdownRenderer({ content, className = "" }: MarkdownRe
   }, [actualTheme]);
 
   const components: Components = {
-    // Custom code block renderer
-    code({ className, children, ...props }) {
-      const match = /language-(\w+)/.exec(className || '');
-      const language = match ? match[1] : '';
-      
-      // Check if this is a block-level code element (has language class)
-      const isBlock = className && className.includes('language-');
-      
-      if (isBlock && language === 'mermaid') {
-        return <MermaidDiagram chart={String(children).replace(/\n$/, '')} />;
-      }
-      
-      if (isBlock) {
+    // Custom pre renderer (for code blocks)
+    pre({ children, ...props }) {
+      const codeElement = React.Children.toArray(children)[0] as React.ReactElement;
+      if (codeElement && React.isValidElement(codeElement) && codeElement.props) {
+        const codeProps = codeElement.props as { className?: string; children?: React.ReactNode };
+        const match = /language-(\w+)/.exec(codeProps.className || '');
+        const language = match ? match[1] : '';
+        
+        if (language === 'mermaid') {
+          return <MermaidDiagram chart={String(codeProps.children).replace(/\n$/, '')} />;
+        }
+        
         return (
-          <div className="relative">
+          <pre className="overflow-x-auto relative" style={{ backgroundColor: 'var(--color-code-bg)' }} {...props}>
             <div 
               className="absolute top-2 right-2 text-xs px-2 py-1 rounded"
               style={{ 
@@ -253,24 +252,35 @@ export default function MarkdownRenderer({ content, className = "" }: MarkdownRe
             >
               {language || 'code'}
             </div>
-            <pre className="overflow-x-auto" style={{ backgroundColor: 'var(--color-code-bg)' }}>
-              <code className={className} {...props}>
-                {children}
-              </code>
-            </pre>
-          </div>
+            {children}
+          </pre>
         );
       }
       
+      return <pre {...props}>{children}</pre>;
+    },
+
+    // Custom code block renderer
+    code({ className, children, ...props }) {
+      // For inline code (no language class or not in pre)
+      if (!className || !className.includes('language-')) {
+        return (
+          <code 
+            className="px-1 py-0.5 rounded text-sm" 
+            style={{ 
+              backgroundColor: 'var(--color-code-bg)', 
+              color: 'var(--color-text)' 
+            }} 
+            {...props}
+          >
+            {children}
+          </code>
+        );
+      }
+      
+      // For block code (handled by pre component)
       return (
-        <code 
-          className="px-1 py-0.5 rounded text-sm" 
-          style={{ 
-            backgroundColor: 'var(--color-code-bg)', 
-            color: 'var(--color-text)' 
-          }} 
-          {...props}
-        >
+        <code className={className} {...props}>
           {children}
         </code>
       );

@@ -55,6 +55,13 @@ A Next.js frontend application that triggers the `websearch-agent` Trigger.dev t
 - **Comprehensive Coverage**: All components support both themes
 - **Accessibility**: WCAG 2.1 AA compliant contrast ratios
 
+### 5. Search History Management
+- **Local Storage**: Browser-based persistence of search results
+- **History Panel**: Slide-out interface for viewing past searches
+- **Entry Management**: View, delete, and navigate historical results
+- **Auto-save**: Automatic saving of successful search results
+- **Size Limits**: Maximum 50 entries to prevent storage bloat
+
 ## Component Architecture
 
 ### Core Components
@@ -71,13 +78,18 @@ src/
 │   ├── PasswordAuth.tsx     # Authentication interface
 │   ├── ThemeToggle.tsx      # Theme switching control
 │   ├── MarkdownRenderer.tsx # Enhanced markdown rendering
-│   └── ErrorBoundary.tsx    # Error handling wrapper
+│   ├── ErrorBoundary.tsx    # Error handling wrapper
+│   ├── SearchHistory.tsx    # Search history panel
+│   ├── HistoryEntry.tsx     # Individual history entry
+│   └── HistoryToggle.tsx    # History panel toggle button
 ├── contexts/
 │   └── ThemeContext.tsx     # Global theme state management
 ├── hooks/
-│   └── useWebSearch.ts      # Custom search hook
+│   ├── useWebSearch.ts      # Custom search hook
+│   └── useSearchHistory.ts  # Search history management hook
 ├── lib/
-│   └── theme-utils.ts       # Theme utility functions
+│   ├── theme-utils.ts       # Theme utility functions
+│   └── localStorage.ts      # localStorage utility functions
 └── types/
     ├── websearch.ts         # Search-related types
     └── theme.ts             # Theme-related types
@@ -100,6 +112,24 @@ interface AppState {
   };
   result?: WebSearchOutput;
   error?: string;
+  // History state
+  showHistory: boolean;
+  selectedHistoryEntry?: SearchHistoryEntry;
+}
+
+// Search History Types
+interface SearchHistoryEntry {
+  id: string;
+  query: string;
+  result: WebSearchOutput;
+  timestamp: number;
+  model?: string;
+  writeModel?: string;
+}
+
+interface SearchHistory {
+  entries: SearchHistoryEntry[];
+  maxEntries: number;
 }
 
 // Theme State
@@ -119,7 +149,15 @@ interface ThemeContextType {
 3. **Task Trigger**: Frontend triggers websearch-agent via Trigger.dev API
 4. **Progress Monitoring**: Real-time updates via WebSocket connection
 5. **Result Display**: Final answer rendered with full markdown support
-6. **Session Management**: Results cached for session duration
+6. **History Saving**: Successful results automatically saved to localStorage
+7. **Session Management**: Results cached for session duration
+
+### History Management
+1. **Auto-save**: Completed searches automatically saved to browser storage
+2. **History Access**: Toggle button in header reveals history panel
+3. **Entry Navigation**: Click entries to view previous search results
+4. **Entry Management**: Delete individual entries or clear all history
+5. **Storage Limits**: Automatic cleanup when exceeding 50 entries
 
 ### Theme Management
 1. **Initialization**: Theme loaded from localStorage or system preference
@@ -156,12 +194,13 @@ interface ThemeContextType {
 ### Layout Structure
 ```
 ┌─────────────────────────────────────┐
-│ Header: Logo + Theme Toggle         │
+│ Header: Logo + History + Theme      │
 ├─────────────────────────────────────┤
 │ Main Content:                       │
 │ ┌─────────────────────────────────┐ │
 │ │ Auth / Search / Progress / Result│ │
 │ └─────────────────────────────────┘ │
+│ History Panel (slide-out)           │
 └─────────────────────────────────────┘
 ```
 

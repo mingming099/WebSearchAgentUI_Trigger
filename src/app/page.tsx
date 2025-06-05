@@ -1,17 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import { useWebSearch } from "@/hooks/useWebSearch";
 import { useAuth } from "@/hooks/useAuth";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
 import SearchForm from "@/components/SearchForm";
 import ProgressView from "@/components/ProgressView";
 import ResultView from "@/components/ResultView";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PasswordAuth from "@/components/PasswordAuth";
 import ThemeToggle from "@/components/ThemeToggle";
+import HistoryToggle from "@/components/HistoryToggle";
+import SearchHistory from "@/components/SearchHistory";
+import { SearchHistoryEntry } from "@/types/websearch";
 
 export default function Home() {
   const { isAuthenticated, isLoading, authenticate } = useAuth();
   
+  // History state and functionality
+  const historyHook = useSearchHistory();
+  const { entries, entryCount, deleteEntry, clearAllHistory, addToHistory } = historyHook;
+
   const {
     stage,
     query,
@@ -25,11 +34,39 @@ export default function Home() {
     triggerSearch,
     resetSearch,
     retrySearch,
-  } = useWebSearch();
+  } = useWebSearch(addToHistory);
+  const [showHistory, setShowHistory] = useState(false);
+  const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<SearchHistoryEntry | null>(null);
+
+
 
   // Handle search submission with model parameters
   const handleSearch = (query: string, model?: string, writeModel?: string) => {
+    // Clear any selected history entry when starting a new search
+    setSelectedHistoryEntry(null);
     triggerSearch(query, model, writeModel);
+  };
+
+  // History handlers
+  const handleToggleHistory = () => {
+    setShowHistory(!showHistory);
+  };
+
+  const handleSelectHistoryEntry = (entry: SearchHistoryEntry) => {
+    setSelectedHistoryEntry(entry);
+    setShowHistory(false); // Close history panel
+  };
+
+  const handleDeleteHistoryEntry = (id: string) => {
+    deleteEntry(id);
+  };
+
+  const handleClearHistory = () => {
+    clearAllHistory();
+  };
+
+  const handleBackToCurrentResult = () => {
+    setSelectedHistoryEntry(null);
   };
 
   // Show loading state while checking authentication
@@ -56,8 +93,18 @@ export default function Home() {
           borderBottomColor: 'var(--color-header-border)',
           borderBottomWidth: '1px'
         }}>
-          <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="max-w-5xl mx-auto px-4 py-6">
             <div className="flex items-center justify-between">
+              {/* Left side - History Toggle */}
+              <div className="flex items-center gap-3">
+                <HistoryToggle
+                  onClick={handleToggleHistory}
+                  historyCount={entryCount}
+                  isOpen={showHistory}
+                />
+              </div>
+              
+              {/* Center - Title */}
               <div className="text-center flex-1">
                 <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
                   Web Search Agent
@@ -66,7 +113,9 @@ export default function Home() {
                   Powered by Trigger.dev - Ask anything and get comprehensive answers from the web
                 </p>
               </div>
-              <div className="ml-4">
+              
+              {/* Right side - Theme Toggle */}
+              <div className="flex items-center gap-3">
                 <ThemeToggle size="md" />
               </div>
             </div>
@@ -74,7 +123,7 @@ export default function Home() {
         </header>
 
         {/* Main Content */}
-        <main className="max-w-4xl mx-auto px-4 py-8">
+        <main className="max-w-6xl mx-auto px-4 py-8">
           <div className="space-y-8">
             
             {/* Search Form - Always visible but disabled during processing */}
@@ -160,14 +209,20 @@ export default function Home() {
               isVisible={stage === 'processing'}
             />
 
-            {/* Result View - Shown when complete */}
-            {result && isComplete && (
+            {/* Result View - Shown when complete or viewing history */}
+            {selectedHistoryEntry ? (
+              <ResultView
+                result={selectedHistoryEntry.result}
+                onNewSearch={handleBackToCurrentResult}
+                isVisible={true}
+              />
+            ) : result && isComplete ? (
               <ResultView
                 result={result}
                 onNewSearch={resetSearch}
                 isVisible={isComplete}
               />
-            )}
+            ) : null}
 
             {/* Current Query Display - Shown during processing and completion */}
             {(stage === 'processing' || stage === 'complete') && query && (
@@ -193,7 +248,7 @@ export default function Home() {
           borderTopColor: 'var(--color-footer-border)',
           borderTopWidth: '1px'
         }}>
-          <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="max-w-5xl mx-auto px-4 py-6">
             <div className="text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
               <p>
                 Built with{" "}
@@ -232,6 +287,16 @@ export default function Home() {
             </div>
           </div>
         </footer>
+
+        {/* Search History Panel */}
+        <SearchHistory
+          isOpen={showHistory}
+          onClose={() => setShowHistory(false)}
+          entries={entries}
+          onSelectEntry={handleSelectHistoryEntry}
+          onDeleteEntry={handleDeleteHistoryEntry}
+          onClearHistory={handleClearHistory}
+        />
       </div>
     </ErrorBoundary>
   );

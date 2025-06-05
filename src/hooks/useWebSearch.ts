@@ -11,7 +11,6 @@ import {
 } from "@/types/websearch";
 import { triggerWebSearchAgent } from "@/lib/trigger";
 import { formatErrorMessage, getDefaultModel, getDefaultWriteModel } from "@/lib/utils";
-
 // Default metadata state
 const defaultMetadata: WebSearchMetadata = {
   progress: 0,
@@ -31,9 +30,13 @@ const defaultAppState: AppState = {
   progress: defaultMetadata,
   result: undefined,
   error: undefined,
+  showHistory: false,
+  selectedHistoryEntry: undefined,
 };
 
-export function useWebSearch() {
+type AddToHistoryFn = (query: string, result: WebSearchOutput, model?: string, writeModel?: string) => void;
+
+export function useWebSearch(addToHistory?: AddToHistoryFn) {
   const [state, setState] = useState<AppState>(defaultAppState);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -53,7 +56,6 @@ export function useWebSearch() {
 
     // Validate that this update is for the current run
     if (run.id !== state.runId) {
-      console.log('Ignoring update from previous run:', run.id, 'current:', state.runId);
       return;
     }
 
@@ -80,16 +82,25 @@ export function useWebSearch() {
       // Handle completion
       if (run.status === 'COMPLETED' && run.output) {
         const output = run.output as WebSearchOutput;
-        setState(prev => ({
-          ...prev,
-          stage: 'complete',
-          result: output,
-          progress: {
-            ...prev.progress,
-            progress: 100,
-            currentAction: 'Search completed successfully',
-          },
-        }));
+        setState(prev => {
+          const newState = {
+            ...prev,
+            stage: 'complete' as const,
+            result: output,
+            progress: {
+              ...prev.progress,
+              progress: 100,
+              currentAction: 'Search completed successfully',
+            },
+          };
+          
+          // Save to history when search completes successfully (only if not already saved)
+          if (prev.query && output && prev.stage !== 'complete' && addToHistory) {
+            addToHistory(prev.query, output);
+          }
+          
+          return newState;
+        });
       }
 
       // Handle failure
@@ -125,7 +136,7 @@ export function useWebSearch() {
         error: formatErrorMessage(error),
       }));
     }
-  }, [run, state.stage, state.runId]);
+  }, [run, state.stage, state.runId, addToHistory]);
 
   // Handle real-time connection errors
   useEffect(() => {
@@ -188,7 +199,7 @@ export function useWebSearch() {
         },
         model: finalModel,
         writeModel: finalWriteModel,
-        maxIterations: 10,
+        maxIterations: 20,
         ...options,
       };
 

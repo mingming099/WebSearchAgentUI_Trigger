@@ -1,5 +1,21 @@
 // Type definitions for WebSearch Agent integration
 
+// Search history entry
+export interface SearchHistoryEntry {
+  id: string;                    // Unique identifier (timestamp-based)
+  query: string;                 // Original search query
+  result: WebSearchOutput;       // Search result
+  timestamp: number;             // When search was completed
+  model?: string;                // Model used for search
+  writeModel?: string;           // Write model used
+}
+
+// History management
+export interface SearchHistory {
+  entries: SearchHistoryEntry[];
+  maxEntries: number;            // Limit to prevent localStorage bloat
+}
+
 // Application state management
 export interface AppState {
   // Current stage of the process
@@ -20,6 +36,10 @@ export interface AppState {
   
   // Error handling
   error?: string;
+  
+  // History state
+  showHistory: boolean;          // Toggle history panel visibility
+  selectedHistoryEntry?: SearchHistoryEntry; // Currently viewing history entry
 }
 
 // Input for websearch-agent task
@@ -95,6 +115,27 @@ export interface ResultViewProps {
 export interface ErrorBoundaryProps {
   children: React.ReactNode;
   fallback?: React.ComponentType<{ error: Error; resetError: () => void }>;
+}
+
+export interface HistoryToggleProps {
+  onClick: () => void;
+  historyCount: number;
+  isOpen: boolean;
+}
+
+export interface SearchHistoryProps {
+  isOpen: boolean;
+  onClose: () => void;
+  entries: SearchHistoryEntry[];
+  onSelectEntry: (entry: SearchHistoryEntry) => void;
+  onDeleteEntry: (id: string) => void;
+  onClearHistory: () => void;
+}
+
+export interface HistoryEntryProps {
+  entry: SearchHistoryEntry;
+  onSelect: () => void;
+  onDelete: () => void;
 }
 
 // Trigger.dev related types
