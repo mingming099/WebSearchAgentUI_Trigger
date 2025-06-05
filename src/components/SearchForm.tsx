@@ -65,7 +65,8 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
         <div className="space-y-2">
           <label 
             htmlFor="search-query" 
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium theme-transition"
+            style={{ color: 'var(--color-text)' }}
           >
             Search Query
           </label>
@@ -77,25 +78,40 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
               onChange={handleInputChange}
               placeholder="Enter your search query..."
               disabled={isLoading || disabled}
-              className={`
-                w-full px-4 py-3 border rounded-lg shadow-sm
-                focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed
-                ${error ? 'border-red-500' : 'border-gray-300'}
-                transition-colors duration-200
-              `}
+              className="w-full px-4 py-3 rounded-lg shadow-sm transition-all duration-200 theme-transition"
+              style={{
+                backgroundColor: disabled ? 'var(--color-input-disabled)' : 'var(--color-input)',
+                borderColor: error ? 'var(--color-error)' : 'var(--color-input-border)',
+                borderWidth: '1px',
+                color: disabled ? 'var(--color-text-muted)' : 'var(--color-text)',
+                cursor: disabled ? 'not-allowed' : 'text'
+              }}
+              onFocus={(e) => {
+                if (!disabled) {
+                  e.target.style.borderColor = 'var(--color-input-focus)';
+                  e.target.style.boxShadow = '0 0 0 2px var(--color-input-focus)';
+                  e.target.style.outline = 'none';
+                }
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = error ? 'var(--color-error)' : 'var(--color-input-border)';
+                e.target.style.boxShadow = 'none';
+              }}
               maxLength={500}
               autoComplete="off"
               autoFocus
             />
             {query.length > 0 && (
-              <div className="absolute right-3 top-3 text-xs text-gray-400">
+              <div 
+                className="absolute right-3 top-3 text-xs theme-transition"
+                style={{ color: 'var(--color-text-muted)' }}
+              >
                 {query.length}/500
               </div>
             )}
           </div>
           {error && (
-            <p className="text-sm text-red-600 flex items-center gap-1">
+            <p className="text-sm flex items-center gap-1 theme-transition" style={{ color: 'var(--color-error)' }}>
               <svg 
                 className="w-4 h-4" 
                 fill="currentColor" 
@@ -113,11 +129,23 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
         </div>
 
         {/* Advanced Options Toggle */}
-        <div className="border-t border-gray-200 pt-4">
+        <div className="pt-4 theme-transition" style={{ borderTopColor: 'var(--color-border)', borderTopWidth: '1px' }}>
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+            className="flex items-center gap-2 text-sm transition-colors theme-transition"
+            style={{ 
+              color: 'var(--color-text-secondary)',
+              cursor: (isLoading || disabled) ? 'not-allowed' : 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading && !disabled) {
+                e.currentTarget.style.color = 'var(--color-text)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
+            }}
             disabled={isLoading || disabled}
           >
             <svg 
@@ -139,13 +167,29 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
 
         {/* Advanced Options Panel */}
         {showAdvanced && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
+          <div 
+            className="rounded-lg p-4 space-y-4 theme-transition" 
+            style={{ 
+              backgroundColor: 'var(--color-surface)', 
+              borderColor: 'var(--color-border)',
+              borderWidth: '1px'
+            }}
+          >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-gray-700">Model Configuration</h3>
+              <h3 className="text-sm font-medium theme-transition" style={{ color: 'var(--color-text)' }}>
+                Model Configuration
+              </h3>
               <button
                 type="button"
                 onClick={resetToDefaults}
-                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                className="text-xs underline transition-colors theme-transition"
+                style={{ color: 'var(--color-primary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--color-primary-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--color-primary)';
+                }}
                 disabled={isLoading || disabled}
               >
                 Reset to defaults
@@ -156,7 +200,8 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
             <div className="space-y-2">
               <label 
                 htmlFor="model" 
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium theme-transition"
+                style={{ color: 'var(--color-text)' }}
               >
                 Search Model
               </label>
@@ -167,14 +212,27 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
                 onChange={handleModelChange}
                 placeholder="openai/gpt-4.1-mini"
                 disabled={isLoading || disabled}
-                className="
-                  w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm
-                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                  disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed
-                  transition-colors duration-200
-                "
+                className="w-full px-3 py-2 rounded-md shadow-sm text-sm transition-all duration-200 theme-transition"
+                style={{
+                  backgroundColor: disabled ? 'var(--color-input-disabled)' : 'var(--color-input)',
+                  borderColor: 'var(--color-input-border)',
+                  borderWidth: '1px',
+                  color: disabled ? 'var(--color-text-muted)' : 'var(--color-text)',
+                  cursor: disabled ? 'not-allowed' : 'text'
+                }}
+                onFocus={(e) => {
+                  if (!disabled) {
+                    e.target.style.borderColor = 'var(--color-input-focus)';
+                    e.target.style.boxShadow = '0 0 0 2px var(--color-input-focus)';
+                    e.target.style.outline = 'none';
+                  }
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--color-input-border)';
+                  e.target.style.boxShadow = 'none';
+                }}
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs theme-transition" style={{ color: 'var(--color-text-muted)' }}>
                 Model used for search and analysis tasks
               </p>
             </div>
@@ -183,7 +241,8 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
             <div className="space-y-2">
               <label 
                 htmlFor="write-model" 
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium theme-transition"
+                style={{ color: 'var(--color-text)' }}
               >
                 Writing Model
               </label>
@@ -194,20 +253,33 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
                 onChange={handleWriteModelChange}
                 placeholder="openai/gpt-4.1-mini"
                 disabled={isLoading || disabled}
-                className="
-                  w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm
-                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                  disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed
-                  transition-colors duration-200
-                "
+                className="w-full px-3 py-2 rounded-md shadow-sm text-sm transition-all duration-200 theme-transition"
+                style={{
+                  backgroundColor: disabled ? 'var(--color-input-disabled)' : 'var(--color-input)',
+                  borderColor: 'var(--color-input-border)',
+                  borderWidth: '1px',
+                  color: disabled ? 'var(--color-text-muted)' : 'var(--color-text)',
+                  cursor: disabled ? 'not-allowed' : 'text'
+                }}
+                onFocus={(e) => {
+                  if (!disabled) {
+                    e.target.style.borderColor = 'var(--color-input-focus)';
+                    e.target.style.boxShadow = '0 0 0 2px var(--color-input-focus)';
+                    e.target.style.outline = 'none';
+                  }
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--color-input-border)';
+                  e.target.style.boxShadow = 'none';
+                }}
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs theme-transition" style={{ color: 'var(--color-text-muted)' }}>
                 Model used for generating the final answer
               </p>
             </div>
 
             {/* Model Examples */}
-            <div className="text-xs text-gray-500 space-y-1">
+            <div className="text-xs space-y-1 theme-transition" style={{ color: 'var(--color-text-muted)' }}>
               <p className="font-medium">Common models:</p>
               <ul className="space-y-0.5 ml-4">
                 <li>• openai/gpt-4.1-mini (default, fast and efficient)</li>
@@ -222,15 +294,27 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
         <button
           type="submit"
           disabled={isLoading || disabled || !query.trim()}
-          className={`
-            w-full px-6 py-3 rounded-lg font-medium text-white
-            transition-all duration-200 flex items-center justify-center gap-2
-            ${
-              isLoading || disabled || !query.trim()
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md'
+          className="w-full px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 theme-transition"
+          style={{
+            backgroundColor: (isLoading || disabled || !query.trim()) 
+              ? 'var(--color-text-muted)' 
+              : 'var(--color-primary)',
+            color: 'var(--color-text-inverse)',
+            cursor: (isLoading || disabled || !query.trim()) ? 'not-allowed' : 'pointer',
+            boxShadow: (isLoading || disabled || !query.trim()) ? 'none' : '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+          }}
+          onMouseEnter={(e) => {
+            if (!isLoading && !disabled && query.trim()) {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-hover)';
+              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
             }
-          `}
+          }}
+          onMouseLeave={(e) => {
+            if (!isLoading && !disabled && query.trim()) {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+              e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+            }
+          }}
         >
           {isLoading ? (
             <>
@@ -270,16 +354,27 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
                 />
               </svg>
-              Start Search
+              Search
             </>
           )}
         </button>
       </form>
       
-      {/* Search tips */}
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">Search Tips:</h3>
-        <ul className="text-sm text-gray-600 space-y-1">
+      {/* Search Tips */}
+      <div 
+        className="mt-6 p-4 rounded-lg theme-transition"
+        style={{ backgroundColor: 'var(--color-surface)' }}
+      >
+        <h3 
+          className="text-sm font-medium mb-2 theme-transition"
+          style={{ color: 'var(--color-text)' }}
+        >
+          Search Tips:
+        </h3>
+        <ul 
+          className="text-sm space-y-1 theme-transition"
+          style={{ color: 'var(--color-text-secondary)' }}
+        >
           <li>• Be specific with your query for better results</li>
           <li>• Ask questions about current events, research topics, or general information</li>
           <li>• The search will find and analyze relevant web content for you</li>

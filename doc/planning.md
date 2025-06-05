@@ -1,206 +1,219 @@
-# WebSearch Agent Frontend - Implementation Planning
+# Dark Mode and Light Mode Implementation Planning
 
-## Project Overview
-Create a minimal Next.js frontend to trigger the `websearch-agent` Trigger.dev task, monitor real-time progress, and display results. The frontend will be as simple as possible while providing essential functionality.
+## Current State Analysis
+
+### Existing Styling Architecture
+- **Framework**: Next.js 15.3.3 with React 19
+- **CSS Framework**: Tailwind CSS v4 with @tailwindcss/postcss plugin
+- **Current Theme Support**: Basic system preference detection via CSS media queries
+- **Styling Approach**: Utility-first with custom CSS variables and manual theme switching
+
+### Current Theme Implementation
+The project currently has minimal dark mode support:
+- CSS variables defined in `globals.css` for background and foreground colors
+- Media query for `prefers-color-scheme: dark` with basic color switching
+- No user-controlled theme toggle mechanism
+- No persistent theme preference storage
+- No dynamic theme switching capability
+
+### File Structure Analysis
+```
+src/
+├── app/
+│   ├── layout.tsx           # Root layout - needs theme provider
+│   ├── globals.css          # Current CSS variables - needs expansion
+│   └── page.tsx             # Main page - needs theme-aware components
+├── components/
+│   ├── SearchForm.tsx       # Needs dark mode styling
+│   ├── ProgressView.tsx     # Needs dark mode styling
+│   ├── ResultView.tsx       # Needs dark mode styling
+│   ├── PasswordAuth.tsx     # Needs dark mode styling
+│   └── [other components]   # All need dark mode updates
+├── contexts/                # Empty - needs ThemeContext
+├── hooks/                   # Needs useTheme hook
+└── lib/                     # Needs theme utilities
+```
 
 ## Implementation Strategy
 
-### Phase 1: Project Setup & Dependencies
-- Install required dependencies for Trigger.dev integration
-- Configure environment variables for Trigger.dev connection
-- Set up basic Next.js structure with TypeScript
+### 1. Theme Management Architecture
+**Context-Based Approach**: Implement React Context for centralized theme state management
+- Create `ThemeContext` for global theme state
+- Build `useTheme` hook for theme consumption
+- Implement theme persistence via localStorage
+- Support system preference detection and override
 
-### Phase 2: Core Infrastructure
-- Create type definitions for websearch-agent integration
-- Set up Trigger.dev client configuration
-- Implement authentication token management
+### 2. CSS Variable System Enhancement
+**Expanded Color Palette**: Extend current CSS variables to support comprehensive theming
+- Semantic color tokens (primary, secondary, accent, etc.)
+- Component-specific color variables
+- Dynamic variable switching based on theme
+- Maintain backward compatibility with existing styles
 
-### Phase 3: UI Components
-- Build search form component
-- Create progress monitoring component with real-time updates
-- Implement result display component
-- Add error handling and loading states
+### 3. Component-Level Theming
+**Systematic Component Updates**: Update all components to use theme-aware classes
+- Replace hardcoded color classes with theme-aware alternatives
+- Implement consistent dark mode color schemes
+- Ensure accessibility contrast ratios in both themes
+- Add theme toggle UI component
 
-### Phase 4: Integration & Testing
-- Connect components with Trigger.dev real-time subscriptions
-- Test end-to-end workflow
-- Handle edge cases and error scenarios
+### 4. Theme Toggle Implementation
+**User Control Interface**: Provide intuitive theme switching mechanism
+- Theme toggle button/switch component
+- Visual feedback for current theme state
+- Support for auto/light/dark options
+- Accessible keyboard navigation
 
-## Data Structure Changes
+## Detailed Implementation Plan
 
-### New Type Definitions (`src/types/websearch.ts`)
+### Phase 1: Foundation Setup
+1. **Theme Context Creation**
+   - Create `src/contexts/ThemeContext.tsx`
+   - Implement theme state management logic
+   - Add localStorage persistence
+   - Support system preference detection
+
+2. **Theme Hook Development**
+   - Create `src/hooks/useTheme.ts`
+   - Provide theme consumption interface
+   - Handle theme switching logic
+   - Manage theme preference persistence
+
+3. **CSS Variables Enhancement**
+   - Expand `src/app/globals.css` with comprehensive color tokens
+   - Define semantic color variables for both themes
+   - Create component-specific color variables
+   - Implement dynamic CSS variable switching
+
+### Phase 2: Core Component Updates
+1. **Layout Integration**
+   - Update `src/app/layout.tsx` to include ThemeProvider
+   - Add theme toggle to header/navigation
+   - Implement theme class application to HTML element
+
+2. **Main Page Theming**
+   - Update `src/app/page.tsx` with theme-aware classes
+   - Replace hardcoded colors with theme variables
+   - Ensure proper contrast and readability
+
+3. **Component Systematic Updates**
+   - SearchForm.tsx: Input styling, button colors, borders
+   - ProgressView.tsx: Progress bars, background colors
+   - ResultView.tsx: Content display, code highlighting
+   - PasswordAuth.tsx: Form styling, authentication UI
+   - ErrorBoundary.tsx: Error display styling
+
+### Phase 3: Theme Toggle UI
+1. **Toggle Component Creation**
+   - Create theme toggle switch component
+   - Support for three states: auto/light/dark
+   - Smooth transition animations
+   - Accessible implementation
+
+2. **Header Integration**
+   - Add theme toggle to main header
+   - Position toggle appropriately
+   - Maintain responsive design
+   - Ensure mobile compatibility
+
+### Phase 4: Advanced Features
+1. **Enhanced Theme Support**
+   - Custom theme creation capability
+   - High contrast mode support enhancement
+   - Color scheme preference management
+   - Theme transition animations
+
+2. **Accessibility Improvements**
+   - Proper ARIA labels for theme controls
+   - Keyboard navigation support
+   - Screen reader compatibility
+   - Color contrast validation
+
+## Technical Considerations
+
+### Data Structure Changes
 ```typescript
-// Application state management
-interface AppState {
-  stage: 'idle' | 'processing' | 'complete' | 'error';
-  query: string;
-  runId?: string;
-  publicAccessToken?: string;
-  progress: WebSearchMetadata;
-  result?: WebSearchOutput;
-  error?: string;
+// New theme-related types
+interface ThemeContextType {
+  theme: 'light' | 'dark' | 'auto';
+  actualTheme: 'light' | 'dark';
+  setTheme: (theme: 'light' | 'dark' | 'auto') => void;
+  toggleTheme: () => void;
 }
 
-// Input for websearch-agent task
-interface WebSearchInput {
-  query: string;
-  searchParams?: {
-    searchDepth?: "basic" | "advanced";
-    topic?: "general" | "news";
-    maxResults?: number;
-  };
-  model?: string;
-  maxIterations?: number;
+// Enhanced CSS variables structure
+:root {
+  /* Light theme variables */
+  --color-background: #ffffff;
+  --color-foreground: #171717;
+  --color-primary: #3b82f6;
+  --color-secondary: #6b7280;
+  --color-accent: #f59e0b;
+  --color-surface: #f9fafb;
+  --color-border: #e5e7eb;
+  --color-input: #ffffff;
+  --color-muted: #9ca3af;
 }
 
-// Metadata from websearch-agent task
-interface WebSearchMetadata {
-  progress: number;
-  actionHistory: string[];
-  currentAction?: string;
-  totalIterations: number;
-  currentIteration: number;
-  lastUpdated: string;
-}
-
-// Output from websearch-agent task
-interface WebSearchOutput {
-  answer: string | null;
-  conversation: Array<{
-    role: string;
-    content: string | null;
-    tool_calls?: any[];
-    tool_call_id?: string;
-  }>;
+[data-theme="dark"] {
+  /* Dark theme variables */
+  --color-background: #0a0a0a;
+  --color-foreground: #ededed;
+  --color-primary: #60a5fa;
+  --color-secondary: #9ca3af;
+  --color-accent: #fbbf24;
+  --color-surface: #1f1f1f;
+  --color-border: #374151;
+  --color-input: #111827;
+  --color-muted: #6b7280;
 }
 ```
 
-## File Structure Changes
-
-### New Files to Create
+### File Structure Changes
 ```
-trigger-dev-frontend/
-├── src/
-│   ├── types/
-│   │   └── websearch.ts              # Type definitions
-│   ├── lib/
-│   │   ├── trigger.ts                # Trigger.dev client setup
-│   │   └── utils.ts                  # Utility functions
-│   ├── hooks/
-│   │   └── useWebSearch.ts           # Custom hook for search logic
-│   ├── components/
-│   │   ├── SearchForm.tsx            # Query input form
-│   │   ├── ProgressView.tsx          # Real-time progress display
-│   │   ├── ResultView.tsx            # Final result display
-│   │   └── ErrorBoundary.tsx         # Error handling wrapper
-│   └── app/
-│       ├── page.tsx                  # Main search page (modify existing)
-│       ├── layout.tsx                # Root layout (modify existing)
-│       └── globals.css               # Global styles (modify existing)
-├── .env.local                        # Environment variables
-└── package.json                      # Dependencies (modify existing)
+src/
+├── contexts/
+│   └── ThemeContext.tsx     # NEW: Theme context provider
+├── hooks/
+│   └── useTheme.ts          # NEW: Theme consumption hook
+├── components/
+│   ├── ThemeToggle.tsx      # NEW: Theme toggle component
+│   └── [existing components] # UPDATED: All with theme support
+├── lib/
+│   └── theme-utils.ts       # NEW: Theme utility functions
+└── app/
+    ├── globals.css          # UPDATED: Enhanced CSS variables
+    └── layout.tsx           # UPDATED: Theme provider integration
 ```
 
-### Files to Modify
-- `package.json` - Add Trigger.dev dependencies
-- `src/app/page.tsx` - Replace with search interface
-- `src/app/layout.tsx` - Add TriggerAuthContext provider
-- `src/app/globals.css` - Add custom styles for progress and results
+### Migration Strategy
+1. **Backward Compatibility**: Ensure existing functionality remains intact
+2. **Progressive Enhancement**: Implement theming as additive feature
+3. **Graceful Degradation**: Maintain usability if theme system fails
+4. **Testing Strategy**: Test both themes across all components and states
 
-## Environment Configuration
-
-### Required Environment Variables (`.env.local`)
-```bash
-# Trigger.dev Configuration
-TRIGGER_SECRET_KEY=your_trigger_secret_key
-NEXT_PUBLIC_TRIGGER_API_URL=https://api.trigger.dev
-# Note: No public key needed - publicAccessToken is generated at runtime per task
-```
-
-## Component Architecture
-
-### State Management Flow
-```mermaid
-graph TD
-    A[SearchForm] --> B[useWebSearch Hook]
-    B --> C[Trigger.dev Client]
-    C --> D[websearch-agent Task]
-    D --> E[Real-time Metadata]
-    E --> F[ProgressView]
-    D --> G[Final Result]
-    G --> H[ResultView]
-    B --> I[Error Handling]
-    I --> J[ErrorBoundary]
-```
-
-### Real-time Data Flow
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant F as SearchForm
-    participant H as useWebSearch Hook
-    participant T as Trigger.dev
-    participant A as websearch-agent
-    participant P as ProgressView
-    participant R as ResultView
-
-    U->>F: Enter query & submit
-    F->>H: Trigger search
-    H->>T: tasks.trigger()
-    T->>A: Execute task
-    A->>T: Update metadata
-    T->>H: Real-time updates
-    H->>P: Progress updates
-    A->>T: Final result
-    T->>H: Task complete
-    H->>R: Display result
-```
-
-## Implementation Approach
-
-### Minimal Feature Set
-1. **Single Page Interface**: One page handling all states
-2. **Essential Components**: Only SearchForm, ProgressView, ResultView
-3. **Basic Styling**: Clean, functional design with Tailwind CSS
-4. **Core Functionality**: Trigger task, show progress, display result
-
-### Progressive Enhancement
-- Start with basic form submission
-- Add real-time progress monitoring
-- Implement result display
-- Add error handling and edge cases
-
-### Technical Decisions
-- **Client-side State**: Use React useState for simplicity
-- **Real-time Updates**: Trigger.dev Realtime hooks
-- **Authentication**: Public access tokens per session
-- **Styling**: Tailwind CSS for rapid development
-- **Error Handling**: React Error Boundaries
-
-## Risk Mitigation
-
-### Potential Issues & Solutions
-1. **WebSocket Connection Issues**
-   - Implement connection retry logic
-   - Fallback to polling if real-time fails
-
-2. **Token Management**
-   - Generate tokens server-side
-   - Handle token expiration gracefully
-
-3. **Long-running Tasks**
-   - Show detailed progress information
-   - Allow task cancellation if needed
-
-4. **Mobile Responsiveness**
-   - Test on mobile devices
-   - Ensure touch-friendly interface
+### Performance Considerations
+- Minimize CSS variable calculations
+- Use CSS transitions for smooth theme switching
+- Optimize theme persistence operations
+- Avoid layout shifts during theme changes
+- Implement efficient re-rendering strategies
 
 ## Success Criteria
-- [ ] User can input search query and trigger task
-- [ ] Real-time progress updates display correctly
-- [ ] Final results show properly formatted answer
-- [ ] Error states are handled gracefully
-- [ ] Interface is responsive and accessible
-- [ ] End-to-end workflow completes successfully
+1. **Functional Requirements**
+   - ✅ User can toggle between light, dark, and auto themes
+   - ✅ Theme preference persists across sessions
+   - ✅ System preference detection works correctly
+   - ✅ All components display properly in both themes
 
+2. **Quality Requirements**
+   - ✅ Accessibility standards maintained (WCAG 2.1 AA)
+   - ✅ Smooth transitions between themes
+   - ✅ Consistent design language across themes
+   - ✅ No performance regression
+
+3. **Technical Requirements**
+   - ✅ Clean, maintainable code architecture
+   - ✅ Type-safe theme implementation
+   - ✅ Comprehensive component coverage
+   - ✅ Proper error handling and fallbacks

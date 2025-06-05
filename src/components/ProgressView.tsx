@@ -19,10 +19,10 @@ export default function ProgressView({ metadata, isVisible }: ProgressViewProps)
     <div className="w-full max-w-2xl mx-auto space-y-6">
       {/* Progress Header */}
       <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-800 mb-2">
+        <h2 className="text-xl font-semibold mb-2 theme-transition" style={{ color: 'var(--color-text)' }}>
           Searching the Web
         </h2>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm theme-transition" style={{ color: 'var(--color-text-secondary)' }}>
           Iteration {currentIteration} of {totalIterations}
         </p>
       </div>
@@ -30,24 +30,42 @@ export default function ProgressView({ metadata, isVisible }: ProgressViewProps)
       {/* Progress Bar */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <span className="text-sm font-medium text-gray-700">Progress</span>
-          <span className="text-sm text-gray-600">{Math.round(progress)}%</span>
+          <span className="text-sm font-medium theme-transition" style={{ color: 'var(--color-text)' }}>
+            Progress
+          </span>
+          <span className="text-sm theme-transition" style={{ color: 'var(--color-text-secondary)' }}>
+            {Math.round(progress)}%
+          </span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+        <div 
+          className="w-full rounded-full h-3 overflow-hidden theme-transition"
+          style={{ backgroundColor: 'var(--color-progress-bg)' }}
+        >
           <div 
-            className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
+            className="h-full rounded-full transition-all duration-500 ease-out"
+            style={{ 
+              width: `${Math.min(Math.max(progress, 0), 100)}%`,
+              background: 'linear-gradient(to right, var(--color-progress-fill), var(--color-primary-hover))'
+            }}
           />
         </div>
       </div>
 
       {/* Current Action */}
       {currentAction && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div 
+          className="rounded-lg p-4 theme-transition" 
+          style={{ 
+            backgroundColor: 'var(--color-info-bg)', 
+            borderColor: 'var(--color-info)',
+            borderWidth: '1px'
+          }}
+        >
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-1">
               <svg 
-                className="animate-spin w-5 h-5 text-blue-600" 
+                className="animate-spin w-5 h-5" 
+                style={{ color: 'var(--color-info)' }}
                 fill="none" 
                 viewBox="0 0 24 24"
               >
@@ -67,12 +85,14 @@ export default function ProgressView({ metadata, isVisible }: ProgressViewProps)
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-blue-800 mb-1">
+              <h3 className="text-sm font-medium mb-1 theme-transition" style={{ color: 'var(--color-info)' }}>
                 Current Action
               </h3>
-              <p className="text-sm text-blue-700">{currentAction}</p>
+              <p className="text-sm theme-transition" style={{ color: 'var(--color-info)' }}>
+                {currentAction}
+              </p>
               {lastUpdated && (
-                <p className="text-xs text-blue-600 mt-1">
+                <p className="text-xs mt-1 theme-transition" style={{ color: 'var(--color-info)' }}>
                   Last updated: {formatRelativeTime(lastUpdated)}
                 </p>
               )}
@@ -84,7 +104,7 @@ export default function ProgressView({ metadata, isVisible }: ProgressViewProps)
       {/* Action History */}
       {actionHistory && actionHistory.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+          <h3 className="text-sm font-medium flex items-center gap-2 theme-transition" style={{ color: 'var(--color-text)' }}>
             <svg 
               className="w-4 h-4" 
               fill="none" 
@@ -101,7 +121,10 @@ export default function ProgressView({ metadata, isVisible }: ProgressViewProps)
             Action History
           </h3>
           
-          <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+          <div 
+            className="rounded-lg p-4 max-h-64 overflow-y-auto theme-transition" 
+            style={{ backgroundColor: 'var(--color-surface)' }}
+          >
             <div className="space-y-3">
               {actionHistory.map((action, index) => (
                 <div 
@@ -111,23 +134,35 @@ export default function ProgressView({ metadata, isVisible }: ProgressViewProps)
                   <div className="flex-shrink-0 mt-1">
                     {index === actionHistory.length - 1 ? (
                       // Current/latest action
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                      <div 
+                        className="w-2 h-2 rounded-full animate-pulse" 
+                        style={{ backgroundColor: 'var(--color-primary)' }}
+                      />
                     ) : (
                       // Completed action
-                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                      <div 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: 'var(--color-success)' }}
+                      />
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className={`
-                      ${index === actionHistory.length - 1 
-                        ? 'text-gray-800 font-medium' 
-                        : 'text-gray-600'
-                      }
-                    `}>
+                    <p 
+                      className={`theme-transition ${
+                        index === actionHistory.length - 1 
+                          ? 'font-medium' 
+                          : ''
+                      }`}
+                      style={{ 
+                        color: index === actionHistory.length - 1 
+                          ? 'var(--color-text)' 
+                          : 'var(--color-text-secondary)'
+                      }}
+                    >
                       {action}
                     </p>
                   </div>
-                  <div className="flex-shrink-0 text-xs text-gray-400">
+                  <div className="flex-shrink-0 text-xs theme-transition" style={{ color: 'var(--color-text-muted)' }}>
                     #{index + 1}
                   </div>
                 </div>
@@ -138,11 +173,26 @@ export default function ProgressView({ metadata, isVisible }: ProgressViewProps)
       )}
 
       {/* Status Indicator */}
-      <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+      <div className="flex items-center justify-center gap-2 text-sm theme-transition" style={{ color: 'var(--color-text-secondary)' }}>
         <div className="flex gap-1">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+          <div 
+            className="w-2 h-2 rounded-full animate-pulse" 
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          />
+          <div 
+            className="w-2 h-2 rounded-full animate-pulse" 
+            style={{ 
+              backgroundColor: 'var(--color-primary)',
+              animationDelay: '0.2s'
+            }}
+          />
+          <div 
+            className="w-2 h-2 rounded-full animate-pulse" 
+            style={{ 
+              backgroundColor: 'var(--color-primary)',
+              animationDelay: '0.4s'
+            }}
+          />
         </div>
         <span>Processing your search request...</span>
       </div>

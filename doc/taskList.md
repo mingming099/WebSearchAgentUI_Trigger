@@ -1,178 +1,238 @@
-# WebSearch Agent Frontend - Task List
+# Dark Mode and Light Mode Implementation Task List
 
-Implementation of a minimal Next.js frontend to trigger the websearch-agent Trigger.dev task, monitor progress in real-time, and display results.
+Implementation of comprehensive theme switching functionality for the WebSearch Agent Frontend.
 
-## Phase 1: Project Setup & Dependencies
+## Phase 1: Foundation Setup
 
-### Completed Tasks
-- [x] Install Trigger.dev dependencies in `package.json`
-  - Add `@trigger.dev/sdk` version ^3.x
-  - Add `@trigger.dev/react-hooks` version ^3.x
-  - Add `zod` for type validation
-- [x] Create environment configuration file `.env.local`
-  - Add TRIGGER_SECRET_KEY variable
-  - Add NEXT_PUBLIC_TRIGGER_API_URL variable
-  - Note: Created .env.example instead due to file restrictions
-  - Note: No NEXT_PUBLIC_TRIGGER_PUBLIC_KEY needed - publicAccessToken is generated at runtime
-- [x] Verify Next.js and TypeScript setup in existing project
-  - Check `tsconfig.json` configuration
-  - Verify Tailwind CSS is properly configured
+### Theme Context & Hook Development
+- [x] Create `src/contexts/ThemeContext.tsx`
+  - [x] Implement ThemeProvider component with React Context
+  - [x] Add theme state management (light/dark/auto)
+  - [x] Implement localStorage persistence for theme preference
+  - [x] Add system preference detection via `matchMedia`
+  - [x] Handle theme initialization and cleanup
+  
+- [x] Create `src/hooks/useTheme.ts`
+  - [x] Export useTheme hook for consuming theme context
+  - [x] Provide theme switching functions (setTheme, toggleTheme)
+  - [x] Add theme validation and error handling
+  - [x] Include TypeScript type definitions
 
-## Phase 2: Core Infrastructure
+- [x] Create `src/lib/theme-utils.ts`
+  - [x] Add utility functions for theme operations
+  - [x] Implement theme preference storage helpers
+  - [x] Add system theme detection functions
+  - [x] Create theme validation utilities
 
-### Completed Tasks
-- [x] Create type definitions file `src/types/websearch.ts`
-  - Define AppState interface for application state management
-  - Define WebSearchInput interface for task input
-  - Define WebSearchMetadata interface for progress tracking
-  - Define WebSearchOutput interface for task results
-- [x] Create Trigger.dev client setup file `src/lib/trigger.ts`
-  - Initialize Trigger.dev client with environment variables
-  - Create function to trigger websearch-agent task
-  - Create function to generate public access tokens
-- [x] Create utility functions file `src/lib/utils.ts`
-  - Add utility functions for formatting timestamps
-  - Add utility functions for error handling
-  - Add utility functions for progress calculations
+### Type Definitions
+- [x] Create `src/types/theme.ts`
+  - [x] Define ThemeContextType interface
+  - [x] Add Theme type union ('light' | 'dark' | 'auto')
+  - [x] Create theme configuration types
+  - [x] Export all theme-related type definitions
 
-## Phase 3: UI Components
+### CSS Variables Enhancement
+- [x] Update `src/app/globals.css`
+  - [x] Expand CSS variables for comprehensive color system
+  - [x] Define semantic color tokens (primary, secondary, accent, etc.)
+  - [x] Add component-specific color variables
+  - [x] Implement `[data-theme="dark"]` selector for dark mode
+  - [x] Create theme transition animations
+  - [x] Maintain backward compatibility with existing variables
 
-### Completed Tasks
-- [x] Create SearchForm component `src/components/SearchForm.tsx`
-  - Build form with query input field
-  - Add submit button with loading state
-  - Implement form validation
-  - Add basic styling with Tailwind CSS
-- [x] Create ProgressView component `src/components/ProgressView.tsx`
-  - Display progress bar (0-100%)
-  - Show current action text
-  - Display action history timeline
-  - Add real-time update handling
-  - Style with Tailwind CSS for clean appearance
-- [x] Create ResultView component `src/components/ResultView.tsx`
-  - Display final answer/response
-  - Show formatted conversation history (optional)
-  - Add "New Search" button to reset
-  - Style with proper typography and spacing
-- [x] Create ErrorBoundary component `src/components/ErrorBoundary.tsx`
-  - Catch and display React errors
-  - Provide retry functionality
-  - Show user-friendly error messages
-  - Add error reporting capabilities
+## Phase 2: Core Integration
 
-## Phase 4: Custom Hooks & State Management
+### Layout Integration
+- [x] Update `src/app/layout.tsx`
+  - [x] Import and integrate ThemeProvider wrapper
+  - [x] Add theme data attribute to HTML element
+  - [x] Ensure theme context is available to all components
+  - [x] Handle SSR compatibility for theme initialization
 
-### Completed Tasks
-- [x] Create useWebSearch hook `src/hooks/useWebSearch.ts`
-  - Manage application state (idle/processing/complete/error)
-  - Handle task triggering logic
-  - Implement real-time progress subscription
-  - Handle error states and cleanup
-  - Provide methods for resetting state
+### Theme Toggle Component
+- [x] Create `src/components/ThemeToggle.tsx`
+  - [x] Build toggle switch with three states (auto/light/dark)
+  - [x] Add smooth transition animations
+  - [x] Implement accessible keyboard navigation
+  - [x] Include proper ARIA labels and screen reader support
+  - [x] Add visual indicators for current theme state
+  - [x] Create responsive design for mobile compatibility
 
-## Phase 5: Main Application Integration
+### Main Page Updates
+- [x] Update `src/app/page.tsx`
+  - [x] Replace hardcoded color classes with theme-aware alternatives
+  - [x] Update background colors for main layout
+  - [x] Modify header styling for theme compatibility
+  - [x] Update footer styling with theme support
+  - [x] Ensure proper contrast ratios in both themes
 
-### Completed Tasks
-- [x] Update main page `src/app/page.tsx`
-  - Replace existing content with search interface
-  - Integrate SearchForm, ProgressView, and ResultView components
-  - Implement state-based conditional rendering
-  - Add proper page structure and layout
-- [x] Update root layout `src/app/layout.tsx`
-  - Add TriggerAuthContext provider wrapper
-  - Configure proper metadata and title
-  - Ensure proper TypeScript types
-- [x] Update global styles `src/app/globals.css`
-  - Add custom styles for progress animations
-  - Add styles for result formatting
-  - Ensure responsive design utilities
-  - Add accessibility improvements
+## Phase 3: Component Updates
 
-## Phase 6: Integration & Testing
+### SearchForm Component
+- [x] Update `src/components/SearchForm.tsx`
+  - [x] Replace hardcoded input styling with theme variables
+  - [x] Update button colors and hover states
+  - [x] Modify border colors for theme compatibility
+  - [x] Update error state styling for both themes
+  - [x] Ensure advanced options panel works in both themes
 
-### Completed Tasks
-- [ ] Test basic form submission and task triggering
-  - Verify connection to Trigger.dev
-  - Test with sample queries
-  - Validate error handling for failed connections
-- [ ] Test real-time progress updates
-  - Verify WebSocket connection establishment
-  - Test progress bar updates
-  - Validate action history display
-  - Test connection retry logic
-- [ ] Test result display and formatting
-  - Verify final answer display
-  - Test conversation history formatting
-  - Validate "New Search" functionality
-- [ ] Test error scenarios and edge cases
-  - Test network disconnection handling
-  - Test invalid query handling
-  - Test task timeout scenarios
-  - Verify error boundary functionality
-- [ ] Test responsive design and accessibility
-  - Test on mobile devices
-  - Verify keyboard navigation
-  - Test screen reader compatibility
-  - Validate color contrast ratios
+### ProgressView Component
+- [x] Update `src/components/ProgressView.tsx`
+  - [x] Update progress bar colors for theme compatibility
+  - [x] Modify background colors and borders
+  - [x] Update action history timeline styling
+  - [x] Ensure loading animations work in both themes
+  - [x] Update text colors and contrast ratios
 
-## Implementation Plan
+### ResultView Component
+- [x] Update `src/components/ResultView.tsx`
+  - [x] Update content display background and borders
+  - [x] Modify code highlighting for dark theme compatibility
+  - [x] Update markdown rendering styles
+  - [x] Ensure proper text contrast in both themes
+  - [x] Update button styling for theme consistency
 
-### Development Approach
-1. **Sequential Implementation**: Complete each phase before moving to the next
-2. **Component-First**: Build and test individual components before integration
-3. **Progressive Enhancement**: Start with basic functionality, add real-time features
-4. **Test-Driven**: Test each component thoroughly before integration
+### PasswordAuth Component
+- [x] Update `src/components/PasswordAuth.tsx`
+  - [x] Update form input styling for theme compatibility
+  - [x] Modify button colors and hover states
+  - [x] Update background and border colors
+  - [x] Ensure error message styling works in both themes
 
-### Key Technical Components
+### Additional Components
+- [ ] Update `src/components/ErrorBoundary.tsx`
+  - [ ] Update error display styling for theme compatibility
+  - [ ] Modify background and text colors
+  - [ ] Ensure error message readability in both themes
 
-#### State Management Flow
-- SearchForm triggers useWebSearch hook
-- Hook manages application state and Trigger.dev integration
-- Components subscribe to state changes for updates
-- Real-time updates flow through Trigger.dev Realtime API
+- [ ] Update `src/components/MarkdownRenderer.tsx`
+  - [ ] Update code block styling for dark theme
+  - [ ] Modify syntax highlighting colors
+  - [ ] Update blockquote and list styling
+  - [ ] Ensure proper contrast for all markdown elements
 
-#### Authentication Strategy
-- Generate public access tokens server-side for each search session
-- Scope tokens to specific run IDs only
-- Store tokens in memory (not localStorage) for security
-- Handle token expiration and refresh gracefully
+- [ ] Update `src/components/MarkdownDemo.tsx`
+  - [ ] Update demonstration content styling
+  - [ ] Ensure all demo elements work in both themes
 
-#### Error Handling Strategy
-- React Error Boundaries for component-level errors
-- Custom error states in useWebSearch hook
-- Network error handling with retry logic
-- User-friendly error messages with actionable guidance
+## Phase 4: Integration & Testing
 
-### Relevant Files
+### Header Integration
+- [ ] Integrate ThemeToggle into main page header
+  - [ ] Position toggle button appropriately in header
+  - [ ] Ensure toggle doesn't interfere with existing layout
+  - [ ] Add proper spacing and alignment
+  - [ ] Test responsive behavior on mobile devices
 
-#### New Files to Create
-- `src/types/websearch.ts` - Type definitions for Trigger.dev integration
-- `src/lib/trigger.ts` - Trigger.dev client setup and task triggering
-- `src/lib/utils.ts` - Utility functions for formatting and error handling
-- `src/hooks/useWebSearch.ts` - Custom hook for search state management
-- `src/components/SearchForm.tsx` - Query input form component
-- `src/components/ProgressView.tsx` - Real-time progress display component
-- `src/components/ResultView.tsx` - Final result display component
-- `src/components/ErrorBoundary.tsx` - Error handling wrapper component
-- `.env.local` - Environment variables for Trigger.dev configuration
+### CSS Optimization
+- [ ] Optimize CSS variables and theme switching
+  - [ ] Minimize redundant CSS variable declarations
+  - [ ] Ensure smooth transitions between themes
+  - [ ] Optimize for performance (avoid layout shifts)
+  - [ ] Add fallback values for older browsers
 
-#### Files to Modify
-- `package.json` - Add Trigger.dev dependencies and scripts
-- `src/app/page.tsx` - Replace with main search interface
-- `src/app/layout.tsx` - Add TriggerAuthContext provider
-- `src/app/globals.css` - Add custom styles for components
+### Accessibility Enhancements
+- [ ] Implement comprehensive accessibility features
+  - [ ] Add proper ARIA labels for theme controls
+  - [ ] Ensure keyboard navigation works correctly
+  - [ ] Test with screen readers
+  - [ ] Validate color contrast ratios (WCAG 2.1 AA)
+  - [ ] Add focus indicators for theme toggle
 
-### Environment Setup Requirements
-```bash
-# Required environment variables
-TRIGGER_SECRET_KEY=your_trigger_secret_key_here
-NEXT_PUBLIC_TRIGGER_API_URL=https://api.trigger.dev
+## Phase 5: Advanced Features & Polish
+
+### Enhanced Theme Support
+- [ ] Add high contrast mode improvements
+  - [ ] Enhance existing high contrast media query support
+  - [ ] Add specific high contrast theme option
+  - [ ] Improve border visibility in high contrast mode
+
+- [ ] Implement theme transition animations
+  - [ ] Add smooth color transitions when switching themes
+  - [ ] Prevent jarring visual changes
+  - [ ] Optimize transition performance
+
+### Testing & Validation
+- [ ] Comprehensive testing across all components
+  - [ ] Test theme switching functionality
+  - [ ] Validate theme persistence across browser sessions
+  - [ ] Test system preference detection
+  - [ ] Ensure all components render correctly in both themes
+  - [ ] Test responsive design in both themes
+
+- [ ] Browser compatibility testing
+  - [ ] Test in major browsers (Chrome, Safari, Firefox, Edge)
+  - [ ] Validate CSS variable support
+  - [ ] Test localStorage functionality
+  - [ ] Ensure graceful degradation for unsupported browsers
+
+### Performance Optimization
+- [ ] Optimize theme switching performance
+  - [ ] Minimize re-renders during theme changes
+  - [ ] Optimize CSS variable updates
+  - [ ] Ensure smooth user experience
+  - [ ] Add loading states if needed
+
+## Implementation Notes
+
+### File Paths Summary
+```
+NEW FILES:
+- src/contexts/ThemeContext.tsx ✅
+- src/hooks/useTheme.ts ✅
+- src/lib/theme-utils.ts ✅
+- src/types/theme.ts ✅
+- src/components/ThemeToggle.tsx ✅
+
+UPDATED FILES:
+- src/app/globals.css ✅
+- src/app/layout.tsx ✅
+- src/app/page.tsx ✅
+- src/components/SearchForm.tsx ✅
+- src/components/ProgressView.tsx ✅
+- src/components/ResultView.tsx
+- src/components/PasswordAuth.tsx ✅
+- src/components/ErrorBoundary.tsx
+- src/components/MarkdownRenderer.tsx
+- src/components/MarkdownDemo.tsx
 ```
 
-### Success Metrics
-- [ ] End-to-end search workflow completes successfully
-- [ ] Real-time progress updates display without lag
-- [ ] Error states are handled gracefully with user feedback
-- [ ] Interface is responsive on mobile and desktop
-- [ ] Accessibility standards are met (WCAG 2.1 AA)
-- [ ] Performance is optimal with fast loading times
+### Mermaid Diagram: Theme Implementation Flow
+
+```mermaid
+graph TD
+    A[User Interaction] --> B{Theme Toggle Click}
+    B --> C[ThemeContext.setTheme]
+    C --> D[Update localStorage]
+    C --> E[Update React State]
+    E --> F[Apply data-theme attribute]
+    F --> G[CSS Variables Update]
+    G --> H[Component Re-render]
+    H --> I[Visual Theme Change]
+    
+    J[System Preference Change] --> K[matchMedia Listener]
+    K --> L{Current Theme = 'auto'?}
+    L -->|Yes| E
+    L -->|No| M[No Action]
+    
+    N[Page Load] --> O[Check localStorage]
+    O --> P{Stored Theme?}
+    P -->|Yes| Q[Use Stored Theme]
+    P -->|No| R[Use System Preference]
+    Q --> E
+    R --> E
+```
+
+### Priority Levels
+- **High Priority**: Phase 1 & 2 (Foundation and Core Integration)
+- **Medium Priority**: Phase 3 (Component Updates)
+- **Low Priority**: Phase 4 & 5 (Advanced Features)
+
+### Estimated Timeline
+- Phase 1: 2-3 days ✅ COMPLETED
+- Phase 2: 2-3 days ✅ COMPLETED
+- Phase 3: 3-4 days (In Progress - 3/6 components completed)
+- Phase 4: 1-2 days
+- Phase 5: 1-2 days
+
+**Total Estimated Time**: 9-14 days

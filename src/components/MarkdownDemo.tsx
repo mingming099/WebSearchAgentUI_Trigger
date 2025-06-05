@@ -106,11 +106,21 @@ This demo showcases the comprehensive markdown rendering capabilities of our upd
 export default function MarkdownDemo() {
   return (
     <div className="w-full max-w-4xl mx-auto p-6">
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <div 
+        className="border rounded-lg shadow-sm" 
+        style={{ 
+          backgroundColor: 'var(--color-surface)', 
+          borderColor: 'var(--color-border)' 
+        }}
+      >
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <h2 
+            className="text-xl font-semibold mb-4 flex items-center gap-2"
+            style={{ color: 'var(--color-text)' }}
+          >
             <svg 
-              className="w-5 h-5 text-blue-600" 
+              className="w-5 h-5" 
+              style={{ color: 'var(--color-primary)' }}
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
