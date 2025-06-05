@@ -190,4 +190,66 @@ export function getDefaultModel(): string {
  */
 export function getDefaultWriteModel(): string {
   return process.env.NEXT_PUBLIC_DEFAULT_WRITE_MODEL || "openai/gpt-4.1-mini";
+}
+
+// LocalStorage keys for model settings
+const STORAGE_KEYS = {
+  SEARCH_MODEL: 'websearch_model',
+  WRITE_MODEL: 'websearch_write_model',
+} as const;
+
+/**
+ * Saves model settings to localStorage
+ * @param searchModel - The search model to save
+ * @param writeModel - The write model to save
+ */
+export function saveModelSettings(searchModel: string, writeModel: string): void {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.SEARCH_MODEL, searchModel);
+      localStorage.setItem(STORAGE_KEYS.WRITE_MODEL, writeModel);
+    }
+  } catch (error) {
+    console.warn('Failed to save model settings to localStorage:', error);
+  }
+}
+
+/**
+ * Loads model settings from localStorage
+ * @returns Object with saved model settings or defaults if not found
+ */
+export function loadModelSettings(): { searchModel: string; writeModel: string } {
+  try {
+    if (typeof window !== 'undefined') {
+      const savedSearchModel = localStorage.getItem(STORAGE_KEYS.SEARCH_MODEL);
+      const savedWriteModel = localStorage.getItem(STORAGE_KEYS.WRITE_MODEL);
+      
+      return {
+        searchModel: savedSearchModel || getDefaultModel(),
+        writeModel: savedWriteModel || getDefaultWriteModel(),
+      };
+    }
+  } catch (error) {
+    console.warn('Failed to load model settings from localStorage:', error);
+  }
+  
+  // Fallback to defaults
+  return {
+    searchModel: getDefaultModel(),
+    writeModel: getDefaultWriteModel(),
+  };
+}
+
+/**
+ * Clears saved model settings from localStorage
+ */
+export function clearModelSettings(): void {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEYS.SEARCH_MODEL);
+      localStorage.removeItem(STORAGE_KEYS.WRITE_MODEL);
+    }
+  } catch (error) {
+    console.warn('Failed to clear model settings from localStorage:', error);
+  }
 } 

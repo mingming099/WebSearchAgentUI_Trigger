@@ -1,121 +1,96 @@
 # WebSearch Agent Frontend Design
 
 ## Overview
-A minimal Next.js frontend to trigger the `websearch-agent` Trigger.dev task, monitor progress in real-time, and display results.
+A Next.js frontend application that triggers the `websearch-agent` Trigger.dev task, monitors progress in real-time, and displays results with comprehensive theming support.
 
-## Requirements
+## Current Architecture
 
-### Functional Requirements
-1. **Task Triggering**
-   - Simple form to input search query
-   - Trigger the `websearch-agent` task
-   - Handle authentication with Trigger.dev
-
-2. **Progress Monitoring**
-   - Real-time progress updates via Trigger.dev Realtime
-   - Display current action and progress percentage
-   - Show action history timeline
-
-3. **Result Display**
-   - Display final response/answer
-   - Show conversation history if needed
-   - Handle error states gracefully
-
-### Non-Functional Requirements
-- Minimal UI with maximum usability
-- Real-time updates without polling
-- Accessible and responsive design
-- Fast loading and interaction
-
-## Utilities & Dependencies
+### Tech Stack
+- **Framework**: Next.js 15.3.3 with React 19
+- **Styling**: Tailwind CSS v4 with comprehensive dark/light theme system
+- **State Management**: React Context for theme management
+- **Real-time Updates**: Trigger.dev React hooks for progress monitoring
+- **Authentication**: Password-based authentication with session management
+- **Markdown Rendering**: React-markdown with syntax highlighting and Mermaid diagram support
 
 ### Core Dependencies
 ```json
 {
-  "@trigger.dev/sdk": "^3.x",
-  "@trigger.dev/react-hooks": "^3.x",
-  "next": "^14.x",
-  "react": "^18.x",
-  "tailwindcss": "^3.x",
-  "zod": "^3.x"
+  "@trigger.dev/sdk": "^3.0.0",
+  "@trigger.dev/react-hooks": "^3.0.0",
+  "next": "15.3.3",
+  "react": "^19.0.0",
+  "tailwindcss": "^4",
+  "react-markdown": "^10.1.0",
+  "highlight.js": "^11.11.1",
+  "mermaid": "^11.6.0",
+  "zod": "^3.22.0"
 }
 ```
 
-### Utility Functions
-1. **Trigger Service** (`lib/trigger.ts`)
-   - Initialize Trigger.dev client
-   - Trigger websearch-agent task
-   - Handle authentication tokens
+## Features
 
-2. **Type Definitions** (`types/websearch.ts`)
-   - WebSearch agent input/output types
-   - Metadata schema types
-   - UI state types
+### 1. Task Triggering & Management
+- **Search Form**: Input query with configurable search parameters
+- **Authentication**: Password-protected access with session persistence
+- **Task Execution**: Trigger websearch-agent with real-time progress tracking
+- **Error Handling**: Comprehensive error boundaries and user feedback
 
-3. **Hooks** (`hooks/useWebSearch.ts`)
-   - Custom hook for task triggering
-   - Real-time progress subscription
-   - State management
+### 2. Real-time Progress Monitoring
+- **Live Updates**: WebSocket-based progress updates via Trigger.dev Realtime
+- **Progress Visualization**: Animated progress bars and status indicators
+- **Action Timeline**: Historical view of search actions and iterations
+- **Current Status**: Real-time display of current search operation
 
-## UI Design
+### 3. Result Display & Rendering
+- **Markdown Support**: Full markdown rendering with GitHub Flavored Markdown
+- **Syntax Highlighting**: Code blocks with language-specific highlighting
+- **Mermaid Diagrams**: Interactive diagram rendering
+- **Responsive Layout**: Mobile-optimized result display
 
-### Layout Structure
+### 4. Theme System
+- **Multi-theme Support**: Light, dark, and auto (system preference) themes
+- **Persistent Preferences**: Theme selection stored in localStorage
+- **Smooth Transitions**: Animated theme switching with CSS transitions
+- **Comprehensive Coverage**: All components support both themes
+- **Accessibility**: WCAG 2.1 AA compliant contrast ratios
+
+## Component Architecture
+
+### Core Components
 ```
-┌─────────────────────────────────────┐
-│ Header: "Web Search Agent"          │
-├─────────────────────────────────────┤
-│                                     │
-│ Main Content Area:                  │
-│ ┌─────────────────────────────────┐ │
-│ │ Search Form / Progress / Result │ │
-│ └─────────────────────────────────┘ │
-│                                     │
-└─────────────────────────────────────┘
+src/
+├── app/
+│   ├── layout.tsx           # Root layout with ThemeProvider
+│   ├── page.tsx             # Main search interface
+│   └── globals.css          # Comprehensive CSS variables system
+├── components/
+│   ├── SearchForm.tsx       # Query input and configuration
+│   ├── ProgressView.tsx     # Real-time progress display
+│   ├── ResultView.tsx       # Markdown result rendering
+│   ├── PasswordAuth.tsx     # Authentication interface
+│   ├── ThemeToggle.tsx      # Theme switching control
+│   ├── MarkdownRenderer.tsx # Enhanced markdown rendering
+│   └── ErrorBoundary.tsx    # Error handling wrapper
+├── contexts/
+│   └── ThemeContext.tsx     # Global theme state management
+├── hooks/
+│   └── useWebSearch.ts      # Custom search hook
+├── lib/
+│   └── theme-utils.ts       # Theme utility functions
+└── types/
+    ├── websearch.ts         # Search-related types
+    └── theme.ts             # Theme-related types
 ```
 
-### Component Hierarchy
-- **Page**: `/` (Home)
-  - **SearchForm**: Input query and trigger
-  - **ProgressView**: Real-time progress display
-  - **ResultView**: Final answer display
-
-### States & Views
-1. **Initial State**: Show search form
-2. **Processing State**: Show progress with timeline
-3. **Complete State**: Show result with option to search again
-4. **Error State**: Show error with retry option
-
-### Design System
-- **Colors**: 
-  - Primary: Blue-600 for actions
-  - Success: Green-500 for completion
-  - Warning: Amber-500 for progress
-  - Error: Red-500 for failures
-  - Gray scale for text hierarchy
-
-- **Typography**:
-  - Heading: text-2xl font-bold
-  - Body: text-base
-  - Caption: text-sm text-gray-600
-
-- **Spacing**: Consistent 4px grid (4, 8, 16, 24, 32px)
-
-## Data Structure
-
-### Application State
+### State Management
 ```typescript
+// Application State
 interface AppState {
-  // Current stage of the process
   stage: 'idle' | 'processing' | 'complete' | 'error';
-  
-  // Search query
   query: string;
-  
-  // Task execution data
   runId?: string;
   publicAccessToken?: string;
-  
-  // Progress data from metadata
   progress: {
     percentage: number;
     currentAction: string;
@@ -123,24 +98,78 @@ interface AppState {
     currentIteration: number;
     totalIterations: number;
   };
-  
-  // Final result
-  result?: {
-    answer: string;
-    conversation: Array<{
-      role: string;
-      content: string;
-    }>;
-  };
-  
-  // Error handling
+  result?: WebSearchOutput;
   error?: string;
+}
+
+// Theme State
+interface ThemeContextType {
+  theme: 'light' | 'dark' | 'auto';
+  actualTheme: 'light' | 'dark';
+  setTheme: (theme: 'light' | 'dark' | 'auto') => void;
+  toggleTheme: () => void;
 }
 ```
 
-### Trigger.dev Integration Types
+## Data Flow
+
+### Search Process
+1. **Authentication**: User enters password to access the application
+2. **Query Input**: User submits search query with optional parameters
+3. **Task Trigger**: Frontend triggers websearch-agent via Trigger.dev API
+4. **Progress Monitoring**: Real-time updates via WebSocket connection
+5. **Result Display**: Final answer rendered with full markdown support
+6. **Session Management**: Results cached for session duration
+
+### Theme Management
+1. **Initialization**: Theme loaded from localStorage or system preference
+2. **User Control**: Theme toggle allows manual theme selection
+3. **System Integration**: Auto theme follows system dark/light preference
+4. **Persistence**: Theme choice saved across browser sessions
+5. **Application**: CSS variables dynamically updated for all components
+
+## UI Design System
+
+### Color Palette
+```css
+/* Light Theme */
+--color-background: #ffffff;
+--color-foreground: #171717;
+--color-primary: #3b82f6;
+--color-surface: #f9fafb;
+--color-border: #e5e7eb;
+
+/* Dark Theme */
+--color-background: #0a0a0a;
+--color-foreground: #ededed;
+--color-primary: #60a5fa;
+--color-surface: #1f1f1f;
+--color-border: #374151;
+```
+
+### Typography
+- **Primary Font**: Geist Sans (system fallback)
+- **Monospace Font**: Geist Mono for code blocks
+- **Hierarchy**: Consistent text sizing with semantic classes
+- **Accessibility**: Proper contrast ratios in both themes
+
+### Layout Structure
+```
+┌─────────────────────────────────────┐
+│ Header: Logo + Theme Toggle         │
+├─────────────────────────────────────┤
+│ Main Content:                       │
+│ ┌─────────────────────────────────┐ │
+│ │ Auth / Search / Progress / Result│ │
+│ └─────────────────────────────────┘ │
+└─────────────────────────────────────┘
+```
+
+## Integration Points
+
+### Trigger.dev Integration
 ```typescript
-// Input for websearch-agent task
+// Task Input
 interface WebSearchInput {
   query: string;
   searchParams?: {
@@ -152,72 +181,50 @@ interface WebSearchInput {
   maxIterations?: number;
 }
 
-// Metadata structure from task
+// Progress Metadata
 interface WebSearchMetadata {
   progress: number;
   actionHistory: string[];
   currentAction?: string;
   totalIterations: number;
   currentIteration: number;
-  lastUpdated: string;
 }
 
-// Output from websearch-agent task
+// Task Output
 interface WebSearchOutput {
   answer: string | null;
   conversation: Array<{
     role: string;
     content: string | null;
     tool_calls?: any[];
-    tool_call_id?: string;
   }>;
 }
 ```
 
-## File Structure
-```
-trigger-dev-frontend/
-├── src/
-│   ├── app/
-│   │   ├── page.tsx              # Main search page
-│   │   ├── layout.tsx            # Root layout
-│   │   └── globals.css           # Global styles
-│   ├── components/
-│   │   ├── SearchForm.tsx        # Query input form
-│   │   ├── ProgressView.tsx      # Real-time progress
-│   │   ├── ResultView.tsx        # Final result display
-│   │   └── ErrorBoundary.tsx     # Error handling
-│   ├── hooks/
-│   │   └── useWebSearch.ts       # Custom search hook
-│   ├── lib/
-│   │   ├── trigger.ts            # Trigger.dev client
-│   │   └── utils.ts              # Utility functions
-│   └── types/
-│       └── websearch.ts          # Type definitions
-└── package.json
-```
+### Authentication Flow
+- Password-based authentication with configurable credentials
+- Session persistence via secure HTTP-only approach
+- Automatic session validation and renewal
+- Graceful handling of authentication failures
 
-## User Flow
-1. User enters search query in form
-2. Form submission triggers websearch-agent task
-3. UI switches to progress view showing:
-   - Progress bar (0-100%)
-   - Current action text
-   - Action history timeline
-4. Real-time updates via Trigger.dev Realtime
-5. On completion, show final answer
-6. Provide option to perform new search
+## Performance Considerations
+- **Server Components**: Used where possible for optimal performance
+- **Client Components**: Limited to interactive elements only
+- **Code Splitting**: Automatic Next.js code splitting
+- **Theme Transitions**: Optimized CSS transitions without layout shifts
+- **Real-time Updates**: Efficient WebSocket connection management
+- **Markdown Rendering**: Optimized rendering with syntax highlighting caching
 
-## Technical Considerations
-- Use Server Components where possible for better performance
-- Client Components only for interactive elements
-- Implement proper error boundaries
-- Handle WebSocket connection issues gracefully
-- Optimize for mobile responsiveness
-- Ensure accessibility compliance (WCAG 2.1 AA)
+## Accessibility Features
+- **WCAG 2.1 AA Compliance**: Proper contrast ratios and focus management
+- **Keyboard Navigation**: Full keyboard accessibility for all interactive elements
+- **Screen Reader Support**: Proper ARIA labels and semantic HTML
+- **Reduced Motion**: Respects user's motion preferences
+- **High Contrast**: Enhanced contrast mode support
 
-## Authentication Strategy
-- Generate public access tokens for each search session
-- Scope tokens to specific run IDs only
-- Handle token expiration gracefully
-- Store tokens securely (memory only, not localStorage)
+## Security Considerations
+- **Authentication**: Secure password-based access control
+- **Token Management**: Secure handling of Trigger.dev tokens
+- **Session Security**: Proper session management and cleanup
+- **Input Validation**: Comprehensive input sanitization
+- **Error Handling**: Secure error messages without sensitive data exposure

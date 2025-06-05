@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { SearchFormProps } from "@/types/websearch";
-import { validateSearchQuery, getDefaultModel, getDefaultWriteModel } from "@/lib/utils";
+import { validateSearchQuery, getDefaultModel, getDefaultWriteModel, loadModelSettings, saveModelSettings, clearModelSettings } from "@/lib/utils";
 
 export default function SearchForm({ onSubmit, isLoading, disabled = false }: SearchFormProps) {
   const [query, setQuery] = useState("");
@@ -13,8 +13,9 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
 
   // Initialize models after component mounts to avoid SSR issues
   useEffect(() => {
-    setModel(getDefaultModel());
-    setWriteModel(getDefaultWriteModel());
+    const savedSettings = loadModelSettings();
+    setModel(savedSettings.searchModel);
+    setWriteModel(savedSettings.writeModel);
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -47,16 +48,27 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
   };
 
   const handleModelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setModel(e.target.value);
+    const newModel = e.target.value;
+    setModel(newModel);
+    // Save to localStorage immediately when user changes the model
+    saveModelSettings(newModel, writeModel);
   };
 
   const handleWriteModelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setWriteModel(e.target.value);
+    const newWriteModel = e.target.value;
+    setWriteModel(newWriteModel);
+    // Save to localStorage immediately when user changes the write model
+    saveModelSettings(model, newWriteModel);
   };
 
   const resetToDefaults = () => {
-    setModel(getDefaultModel());
-    setWriteModel(getDefaultWriteModel());
+    const defaultModel = getDefaultModel();
+    const defaultWriteModel = getDefaultWriteModel();
+    setModel(defaultModel);
+    setWriteModel(defaultWriteModel);
+    // Clear saved settings and save the defaults
+    clearModelSettings();
+    saveModelSettings(defaultModel, defaultWriteModel);
   };
 
   return (
@@ -97,7 +109,7 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
                 e.target.style.borderColor = error ? 'var(--color-error)' : 'var(--color-input-border)';
                 e.target.style.boxShadow = 'none';
               }}
-              maxLength={500}
+              maxLength={50000}
               autoComplete="off"
               autoFocus
             />
@@ -106,7 +118,7 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
                 className="absolute right-3 top-3 text-xs theme-transition"
                 style={{ color: 'var(--color-text-muted)' }}
               >
-                {query.length}/500
+                {query.length}/50000
               </div>
             )}
           </div>
@@ -210,7 +222,7 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
                 type="text"
                 value={model}
                 onChange={handleModelChange}
-                placeholder="openai/gpt-4.1-mini"
+                placeholder="SearchModel"
                 disabled={isLoading || disabled}
                 className="w-full px-3 py-2 rounded-md shadow-sm text-sm transition-all duration-200 theme-transition"
                 style={{
@@ -251,7 +263,7 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
                 type="text"
                 value={writeModel}
                 onChange={handleWriteModelChange}
-                placeholder="openai/gpt-4.1-mini"
+                placeholder="WriteModel"
                 disabled={isLoading || disabled}
                 className="w-full px-3 py-2 rounded-md shadow-sm text-sm transition-all duration-200 theme-transition"
                 style={{
@@ -283,7 +295,7 @@ export default function SearchForm({ onSubmit, isLoading, disabled = false }: Se
               <p className="font-medium">Common models:</p>
               <ul className="space-y-0.5 ml-4">
                 <li>• openai/gpt-4.1-mini (default, fast and efficient)</li>
-                <li>• google/gemini-2.5-flash-preview-05-20:thinking</li>
+                <li>• google/gemini-2.5-flash-preview-05-20</li>
                 <li>• anthropic/claude-sonnet-4</li>
                 <li>• google/gemini-2.5-pro-preview</li>
               </ul>
