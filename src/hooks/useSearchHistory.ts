@@ -6,12 +6,25 @@ import {
   deleteHistoryEntry,
   clearHistory,
   generateHistoryId,
+  getProcessingEntries,
+  getHistoryEntryByRunId,
 } from '@/lib/localStorage';
 
 export function useSearchHistory() {
   const [history, setHistory] = useState<SearchHistory>(() => loadSearchHistory());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Manual refresh function
+  const refreshHistory = useCallback(() => {
+    try {
+      const loadedHistory = loadSearchHistory();
+      setHistory(loadedHistory);
+    } catch (err) {
+      console.error('Failed to refresh search history:', err);
+      setError('Failed to refresh search history');
+    }
+  }, []);
 
   // Load history on mount and when localStorage changes
   useEffect(() => {
@@ -41,7 +54,17 @@ export function useSearchHistory() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Add new search result to history
+  // Listen for custom events to refresh history in same tab
+  useEffect(() => {
+    const handleHistoryUpdate = () => {
+      refreshHistory();
+    };
+
+    window.addEventListener('websearch-history-updated', handleHistoryUpdate);
+    return () => window.removeEventListener('websearch-history-updated', handleHistoryUpdate);
+  }, [refreshHistory]);
+
+  // Add new search result to history (legacy function - now mostly replaced by immediate saving)
   const addToHistory = useCallback((
     query: string,
     result: WebSearchOutput,
@@ -55,8 +78,11 @@ export function useSearchHistory() {
       const entry: SearchHistoryEntry = {
         id: generateHistoryId(),
         query,
+        runId: `legacy-${generateHistoryId()}`, // Generate a placeholder runId for legacy entries
+        status: 'complete',
         result,
         timestamp: Date.now(),
+        completedAt: Date.now(),
         model,
         writeModel,
       };
@@ -130,6 +156,21 @@ export function useSearchHistory() {
     );
   }, [history.entries]);
 
+  // Get processing entries
+  const getProcessingHistory = useCallback((): SearchHistoryEntry[] => {
+    return getProcessingEntries();
+  }, []);
+
+  // Get entry by runId
+  const getEntryByRunId = useCallback((runId: string): SearchHistoryEntry | undefined => {
+    return getHistoryEntryByRunId(runId);
+  }, []);
+
+  // Filter entries by status
+  const getEntriesByStatus = useCallback((status: 'processing' | 'complete' | 'failed' | 'canceled'): SearchHistoryEntry[] => {
+    return history.entries.filter(entry => entry.status === status);
+  }, [history.entries]);
+
   return {
     // State
     history,
@@ -142,10 +183,14 @@ export function useSearchHistory() {
     addToHistory,
     deleteEntry,
     clearAllHistory,
+    refreshHistory,
     
     // Utilities
     getEntry,
     getRecentEntries,
     searchEntries,
+    getProcessingHistory,
+    getEntryByRunId,
+    getEntriesByStatus,
   };
 } 

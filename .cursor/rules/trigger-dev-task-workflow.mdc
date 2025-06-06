@@ -6,25 +6,22 @@ alwaysApply: false
 # Cursor Rule: Trigger.dev Task Workflow Implementation in Next.js
 
 ## Overview
-Guidelines for implementing complete Trigger.dev task workflows in Next.js applications with real-time progress monitoring and result display.
+Guidelines for implementing Trigger.dev task workflows in Next.js applications with real-time progress monitoring and persistent task tracking.
 
 ## Core Architecture Pattern
 
-### 1. Task Triggering Flow
+### 1. Task Triggering API Route
 ```typescript
-// API Route (/app/api/trigger-[task]/route.ts)
+// /app/api/trigger-[task]/route.ts
 import { tasks } from '@trigger.dev/sdk/v3';
 
 export async function POST(request: NextRequest) {
-  // Validate TRIGGER_SECRET_KEY
   if (!process.env.TRIGGER_SECRET_KEY) {
     return NextResponse.json({ error: 'TRIGGER_SECRET_KEY not set' }, { status: 500 });
   }
 
   const body = await request.json();
-  
-  // Trigger task and return handle with publicAccessToken
-  const handle = await tasks.trigger('task-id', body);
+  const handle = await tasks.trigger('your-task-id', body);
   
   return NextResponse.json({
     id: handle.id,
@@ -33,294 +30,272 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-### 2. Client-Side Hook Pattern
+### 2. Client-Side Hook with Persistence
 ```typescript
 // hooks/useTaskExecution.ts
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
-
-// ⚠️ Replace these with your task-specific types
-interface YourTaskInput { /* Define based on task source */ }
-interface YourTaskOutput { /* Define based on task source */ }
-interface YourTaskMetadata { /* Define based on task metadata.set() calls */ }
 
 export function useTaskExecution() {
   const [state, setState] = useState({
     stage: 'idle' | 'processing' | 'complete' | 'error',
     runId: undefined,
     publicAccessToken: undefined,
-    progress: {} as YourTaskMetadata,  // Use your task-specific metadata type
-    result: undefined as YourTaskOutput | undefined,
+    progress: {},
+    result: undefined,
     error: undefined,
   });
 
-  // Real-time subscription with publicAccessToken
-  const { run, error: realtimeError } = useRealtimeRun(
-    state.runId || "",
-    {
-      accessToken: state.publicAccessToken,
-      baseURL: process.env.NEXT_PUBLIC_TRIGGER_API_URL,
-      enabled: !!(state.runId && state.publicAccessToken && state.stage === 'processing'),
-    }
-  );
+  const { run } = useRealtimeRun(state.runId || "", {
+    accessToken: state.publicAccessToken,
+    enabled: !!(state.runId && state.publicAccessToken && state.stage === 'processing'),
+  });
 
-  // Handle real-time updates in useEffect
   useEffect(() => {
     if (!run || state.stage !== 'processing') return;
     
-    // Update progress from run.metadata
     if (run.metadata) {
       setState(prev => ({ ...prev, progress: run.metadata }));
     }
     
-    // Handle completion
     if (run.status === 'COMPLETED' && run.output) {
       setState(prev => ({ ...prev, stage: 'complete', result: run.output }));
+      updateHistoryEntryStatus(state.runId, 'complete', run.output);
     }
     
-    // Handle failures
     if (run.status === 'FAILED') {
       setState(prev => ({ ...prev, stage: 'error', error: 'Task failed' }));
+      updateHistoryEntryStatus(state.runId, 'failed', undefined, 'Task execution failed');
     }
   }, [run, state.stage, state.runId]);
 
-  const triggerTask = async (input: YourTaskInput) => {
-    // Call API route to trigger task
-    const response = await fetch('/api/trigger-your-task', {  // Use your task-specific endpoint
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    
-    const handle = await response.json();
-    
-    setState(prev => ({
-      ...prev,
-      stage: 'processing',
-      runId: handle.id,
-      publicAccessToken: handle.publicAccessToken,
-    }));
+  const triggerTask = async (input) => {
+    // 1. Save to localStorage immediately
+    const processingEntry = addProcessingEntry(input.description, Date.now().toString());
+
+    try {
+      // 2. Trigger task
+      const response = await fetch('/api/trigger-your-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      
+      const handle = await response.json();
+      
+      // 3. Update with real runId
+      updateProcessingEntryWithRunId(processingEntry.id, handle.id);
+      
+      setState(prev => ({
+        ...prev,
+        stage: 'processing',
+        runId: handle.id,
+        publicAccessToken: handle.publicAccessToken,
+      }));
+    } catch (error) {
+      updateHistoryEntryStatus(processingEntry.id, 'failed', undefined, error.message);
+      setState(prev => ({ ...prev, stage: 'error', error: error.message }));
+    }
   };
 
-  return { ...state, triggerTask, run };
+  return { ...state, triggerTask };
 }
 ```
 
-### 3. Component Structure
+## Task Recovery System
+
+### Server-Side Recovery APIs
 ```typescript
-// components/TaskInterface.tsx
+// /app/api/task-status/[runId]/route.ts
+import { runs } from '@trigger.dev/sdk/v3';
+
+export async function GET(request, { params }) {
+  if (!process.env.TRIGGER_SECRET_KEY) {
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+
+  const { runId } = await params;
+  const run = await runs.retrieve(runId);
+
+  return NextResponse.json({
+    runId: run.id,
+    status: run.status,
+    metadata: run.metadata,
+    output: run.output,
+    error: run.status === 'FAILED' ? 'Task execution failed' : undefined,
+  });
+}
+
+// /app/api/generate-token/route.ts
+import { auth } from '@trigger.dev/sdk/v3';
+
+export async function POST(request) {
+  const { runId } = await request.json();
+  
+  const publicToken = await auth.createPublicToken({
+    scopes: { read: { runs: [runId] } },
+    expirationTime: "24h",
+  });
+
+  return NextResponse.json({
+    publicAccessToken: publicToken,
+    runId: runId,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  });
+}
+```
+
+### Recovery Hooks
+```typescript
+// hooks/useTaskRecovery.ts
+export function useTaskRecovery() {
+  const [recoverableTasks, setRecoverableTasks] = useState([]);
+
+  const checkAllProcessingTasks = useCallback(async () => {
+    const processingEntries = getProcessingEntries();
+    
+    const statusChecks = processingEntries.map(async (entry) => {
+      const response = await fetch(`/api/task-status/${entry.runId}`);
+      if (!response.ok) return null;
+      
+      const serverStatus = await response.json();
+      
+      if (serverStatus.status === 'COMPLETED') {
+        updateHistoryEntryStatus(entry.runId, 'complete', serverStatus.output);
+        return null;
+      } else if (serverStatus.status === 'FAILED') {
+        updateHistoryEntryStatus(entry.runId, 'failed', undefined, serverStatus.error);
+        return null;
+      }
+      
+      return { ...entry, serverStatus };
+    });
+
+    const results = await Promise.all(statusChecks);
+    setRecoverableTasks(results.filter(Boolean));
+  }, []);
+
+  useEffect(() => {
+    checkAllProcessingTasks();
+  }, []);
+
+  return { recoverableTasks };
+}
+
+// hooks/useTaskReconnection.ts
+export function useTaskReconnection() {
+  const reconnectToTask = useCallback(async (runId) => {
+    const statusResponse = await fetch(`/api/task-status/${runId}`);
+    const currentStatus = await statusResponse.json();
+
+    if (currentStatus.status === 'PENDING' || currentStatus.status === 'EXECUTING') {
+      const tokenResponse = await fetch('/api/generate-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId }),
+      });
+
+      const { publicAccessToken } = await tokenResponse.json();
+      
+      return { canReconnect: true, publicAccessToken, currentStatus };
+    }
+    
+    return { canReconnect: false, currentStatus };
+  }, []);
+
+  return { reconnectToTask };
+}
+```
+
+## Persistent Storage Pattern
+```typescript
+// lib/localStorage.ts
+interface TaskHistoryEntry {
+  id: string;
+  description: string;
+  runId: string;
+  status: 'processing' | 'complete' | 'failed' | 'canceled';
+  result?: any;
+  error?: string;
+  timestamp: number;
+  completedAt?: number;
+}
+
+export function addProcessingEntry(description: string, runId: string): TaskHistoryEntry;
+export function updateHistoryEntryStatus(runId: string, status: string, result?: any, error?: string): void;
+export function getProcessingEntries(): TaskHistoryEntry[];
+```
+
+## Component Structure
+```typescript
 export default function TaskInterface() {
   const { stage, progress, result, error, triggerTask } = useTaskExecution();
+  const { recoverableTasks } = useTaskRecovery();
 
   return (
     <div>
-      {/* Input Form - shown when idle or error */}
+      {recoverableTasks.length > 0 && (
+        <TaskRecoveryNotification recoverableTasks={recoverableTasks} />
+      )}
+      
       {(stage === 'idle' || stage === 'error') && (
         <TaskForm onSubmit={triggerTask} />
       )}
       
-      {/* Progress View - shown during processing */}
-      <ProgressView 
-        metadata={progress} 
-        isVisible={stage === 'processing'} 
-      />
+      <ProgressView metadata={progress} isVisible={stage === 'processing'} />
+      <ResultView result={result} isVisible={stage === 'complete'} />
       
-      {/* Result View - shown when complete */}
-      <ResultView 
-        result={result} 
-        isVisible={stage === 'complete'} 
-      />
-      
-      {/* Error Display */}
-      {stage === 'error' && error && (
-        <ErrorDisplay error={error} />
-      )}
+      {stage === 'error' && <ErrorDisplay error={error} />}
     </div>
   );
 }
 ```
 
-## Key Implementation Requirements
+## Implementation Requirements
 
 ### Environment Variables
-- **Server-side**: `TRIGGER_SECRET_KEY` - Required for `tasks.trigger()`
-- **Client-side**: `NEXT_PUBLIC_TRIGGER_API_URL` - Optional for custom instances
+- **TRIGGER_SECRET_KEY**: Required for all server-side operations
+- **NEXT_PUBLIC_TRIGGER_API_URL**: Optional for custom instances
 
-### publicAccessToken Handling
-- **Server returns**: `{ id: handle.id, publicAccessToken: handle.publicAccessToken }`
-- **Client stores**: In component state (not localStorage for security)
-- **Used for**: Real-time subscription via `useRealtimeRun`
-- **Scope**: Limited to specific run, auto-expires
-
-### Real-time Progress Updates
-```typescript
-// In task implementation - use metadata for progress
-import { task, metadata } from "@trigger.dev/sdk/v3";
-
-export const myTask = task({
-  id: "my-task",
-  run: async (payload) => {
-    // Update progress
-    metadata.set("progress", 25);
-    metadata.set("currentAction", "Processing...");
-    metadata.append("actionHistory", "Step 1 completed");
-    
-    // Task logic here
-    
-    metadata.set("progress", 100);
-    return result;
-  },
-});
-```
-
-### Progress Display Pattern
-```typescript
-// ⚠️ IMPORTANT: Metadata structure is TASK-SPECIFIC
-// Always examine the actual task implementation to determine the correct structure
-// Example from websearch-agent task:
-interface WebSearchMetadata {
-  progress: number;              // 0-100 percentage
-  currentAction?: string;        // Current operation description
-  actionHistory: string[];       // Array of completed actions
-  currentIteration: number;      // Current iteration/step
-  totalIterations: number;       // Total expected iterations
-  lastUpdated: string;          // ISO timestamp
-}
-
-// Your task may have different metadata structure - CHECK THE TASK SOURCE CODE!
-interface YourTaskMetadata {
-  // Define based on your specific task's metadata.set() calls
-}
-```
-
-### Error Handling
-```typescript
-// In useTaskExecution hook
-useEffect(() => {
-  if (realtimeError && state.stage === 'processing') {
-    setState(prev => ({
-      ...prev,
-      error: `Real-time connection error: ${realtimeError.message}`,
-    }));
-  }
-}, [realtimeError, state.stage]);
-```
-
-## File Structure Convention
+### File Structure
 ```
 src/
-├── app/
-│   ├── api/
-│   │   └── trigger-[task]/
-│   │       └── route.ts          # Task triggering endpoint
-│   └── page.tsx                  # Main interface
-├── components/
-│   ├── TaskForm.tsx             # Input form for task
-│   ├── ProgressView.tsx         # Real-time progress display
-│   ├── ResultView.tsx           # Task result display
-│   └── ErrorBoundary.tsx        # Error handling wrapper
+├── app/api/
+│   ├── trigger-[task]/route.ts
+│   ├── task-status/[runId]/route.ts
+│   └── generate-token/route.ts
 ├── hooks/
-│   └── useTaskExecution.ts      # Main task execution hook
-├── lib/
-│   └── trigger.ts               # Trigger.dev client utilities
-└── types/
-    └── task.ts                  # TypeScript type definitions
+│   ├── useTaskExecution.ts
+│   ├── useTaskRecovery.ts
+│   └── useTaskReconnection.ts
+├── lib/localStorage.ts
+└── types/task.ts
 ```
 
-## Security Best Practices
-1. **Never expose TRIGGER_SECRET_KEY** to client-side
-2. **Use publicAccessToken** for client-side real-time subscriptions only
-3. **Validate inputs** in API routes before triggering tasks
-4. **Handle token expiration** gracefully in error handling
-5. **Implement authentication** if needed before task access
-
-## TypeScript Types Pattern
+### TypeScript Types
 ```typescript
-// types/task.ts
+interface TaskInput { /* Define based on task requirements */ }
+interface TaskOutput { /* Define based on task output */ }
+interface TaskMetadata { /* Define based on task metadata.set() calls */ }
 
-// ⚠️ CRITICAL: These types MUST match your specific task implementation
-// Always examine the task source code to determine correct types
-
-export interface TaskInput {
-  // Define based on your task's expected input payload
-  // Example: query: string; model?: string; options?: SearchOptions;
-}
-
-export interface TaskOutput {
-  // Define based on your task's return value
-  // Example: answer: string; conversation: Message[]; sources?: Source[];
-}
-
-export interface TaskMetadata {
-  // Define based on your task's metadata.set() calls
-  // Example from websearch-agent:
-  // progress: number; currentAction?: string; actionHistory: string[];
-  // currentIteration: number; totalIterations: number; lastUpdated: string;
-}
-
-export interface AppState {
-  stage: 'idle' | 'processing' | 'complete' | 'error';
-  runId?: string;
-  publicAccessToken?: string;
-  progress: TaskMetadata;  // Use your task-specific metadata type
-  result?: TaskOutput;     // Use your task-specific output type
+interface TaskStatusResponse {
+  runId: string;
+  status: 'PENDING' | 'EXECUTING' | 'COMPLETED' | 'FAILED' | 'CANCELED';
+  metadata?: TaskMetadata;
+  output?: TaskOutput;
   error?: string;
 }
-
-export interface TriggerHandle {
-  id: string;
-  publicAccessToken: string;
-}
 ```
 
-## Required Dependencies
-```json
-{
-  "@trigger.dev/sdk": "^3.0.0",
-  "@trigger.dev/react-hooks": "^3.0.0",
-  "next": "15.x",
-  "react": "^19.0.0"
-}
-```
+## Critical Implementation Steps
+1. **Immediate Persistence**: Save tasks to localStorage when triggered
+2. **Server-side Recovery**: Implement status and token generation endpoints
+3. **Recovery Detection**: Check for processing tasks on app load
+4. **Token Management**: Generate scoped tokens for reconnection
+5. **Status Synchronization**: Update localStorage based on server status
 
-## Usage Instructions for Coding Agents
-
-### 🚨 CRITICAL FIRST STEP: Analyze the Target Task
-**Before implementing any UI, you MUST:**
-1. **Read the task source code** to understand input/output/metadata structure
-2. **Examine metadata.set() calls** to determine progress tracking fields
-3. **Check the task's return value** to understand result structure
-4. **Look for task documentation** or type definitions if available
-
-### Implementation Steps
-1. **Always implement server-side API route** for task triggering with proper error handling
-2. **Use useRealtimeRun hook** for real-time progress monitoring
-3. **Store publicAccessToken in component state**, never in localStorage
-4. **Define TypeScript types** based on actual task implementation (not generic examples)
-5. **Handle all run states**: PENDING, EXECUTING, COMPLETED, FAILED, CANCELED
-6. **Validate TRIGGER_SECRET_KEY** in API routes before triggering
-7. **Use metadata system** for real-time progress updates, not polling
-8. **Implement proper error boundaries** and error state handling
-9. **Follow the stage-based UI pattern**: idle → processing → complete/error
-10. **Use TypeScript** for type safety across client and server components
-
-### Task Analysis Checklist
-- [ ] Located and read the task source code
-- [ ] Identified input payload structure
-- [ ] Identified output/return value structure  
-- [ ] Identified metadata fields used for progress tracking
-- [ ] Created task-specific TypeScript interfaces
-- [ ] Verified task ID and trigger method
-
-### Common Task Analysis Locations
-```bash
-# Look for task files in these common locations:
-./src/trigger/
-./trigger/
-./app/trigger/
-./tasks/
-./src/tasks/
-
-# Search for task definitions:
-grep -r "task({" ./src/
-grep -r "export.*task" ./src/
-```
+## Security Best Practices
+- Never expose TRIGGER_SECRET_KEY to client-side
+- Scope tokens to specific runId
+- Store publicAccessToken only in component state
+- Validate all inputs in API routes
+- Handle token expiration with regeneration

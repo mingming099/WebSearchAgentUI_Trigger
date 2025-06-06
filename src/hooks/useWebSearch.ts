@@ -11,6 +11,7 @@ import {
 } from "@/types/websearch";
 import { triggerWebSearchAgent } from "@/lib/trigger";
 import { formatErrorMessage, getDefaultModel, getDefaultWriteModel } from "@/lib/utils";
+import { addProcessingEntry, updateHistoryEntryStatus } from "@/lib/localStorage";
 // Default metadata state
 const defaultMetadata: WebSearchMetadata = {
   progress: 0,
@@ -94,9 +95,10 @@ export function useWebSearch(addToHistory?: AddToHistoryFn) {
             },
           };
           
-          // Save to history when search completes successfully (only if not already saved)
-          if (prev.query && output && prev.stage !== 'complete' && addToHistory) {
-            addToHistory(prev.query, output);
+          // Update history entry status to complete (instead of adding new entry)
+          if (prev.runId && output) {
+            updateHistoryEntryStatus(prev.runId, 'complete', output);
+            console.log('Updated history entry to complete status:', prev.runId);
           }
           
           return newState;
@@ -105,28 +107,44 @@ export function useWebSearch(addToHistory?: AddToHistoryFn) {
 
       // Handle failure
       if (run.status === 'FAILED') {
-        setState(prev => ({
-          ...prev,
-          stage: 'error',
-          error: 'The search task failed. Please try again.',
-          progress: {
-            ...prev.progress,
-            currentAction: 'Search failed',
-          },
-        }));
+        setState(prev => {
+          // Update history entry status to failed
+          if (prev.runId) {
+            updateHistoryEntryStatus(prev.runId, 'failed', undefined, 'The search task failed. Please try again.');
+            console.log('Updated history entry to failed status:', prev.runId);
+          }
+          
+          return {
+            ...prev,
+            stage: 'error',
+            error: 'The search task failed. Please try again.',
+            progress: {
+              ...prev.progress,
+              currentAction: 'Search failed',
+            },
+          };
+        });
       }
 
       // Handle cancellation
       if (run.status === 'CANCELED') {
-        setState(prev => ({
-          ...prev,
-          stage: 'error',
-          error: 'The search was canceled.',
-          progress: {
-            ...prev.progress,
-            currentAction: 'Search canceled',
-          },
-        }));
+        setState(prev => {
+          // Update history entry status to canceled
+          if (prev.runId) {
+            updateHistoryEntryStatus(prev.runId, 'canceled', undefined, 'The search was canceled.');
+            console.log('Updated history entry to canceled status:', prev.runId);
+          }
+          
+          return {
+            ...prev,
+            stage: 'error',
+            error: 'The search was canceled.',
+            progress: {
+              ...prev.progress,
+              currentAction: 'Search canceled',
+            },
+          };
+        });
       }
     } catch (error) {
       console.error('Error processing run update:', error);
@@ -205,6 +223,10 @@ export function useWebSearch(addToHistory?: AddToHistoryFn) {
 
       // Trigger the websearch-agent task
       const handle: TriggerHandle = await triggerWebSearchAgent(searchInput);
+
+      // SAVE TO HISTORY IMMEDIATELY when task is triggered
+      const processingEntry = addProcessingEntry(query.trim(), handle.id, finalModel, finalWriteModel);
+      console.log('Saved processing entry to history:', processingEntry);
 
       // Update state with run information
       setState(prev => ({

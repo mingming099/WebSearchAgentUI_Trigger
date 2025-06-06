@@ -1,11 +1,15 @@
 // Type definitions for WebSearch Agent integration
 
-// Search history entry
+// Search history entry - Updated to support task persistence
 export interface SearchHistoryEntry {
   id: string;                    // Unique identifier (timestamp-based)
   query: string;                 // Original search query
-  result: WebSearchOutput;       // Search result
-  timestamp: number;             // When search was completed
+  runId: string;                 // NEW: Trigger.dev run identifier
+  status: 'processing' | 'complete' | 'failed' | 'canceled'; // NEW: Task status
+  result?: WebSearchOutput;      // Updated: Optional until completed
+  error?: string;                // NEW: Error message if failed
+  timestamp: number;             // When task was triggered (not completed)
+  completedAt?: number;          // NEW: When task completed
   model?: string;                // Model used for search
   writeModel?: string;           // Write model used
 }
@@ -14,6 +18,32 @@ export interface SearchHistoryEntry {
 export interface SearchHistory {
   entries: SearchHistoryEntry[];
   maxEntries: number;            // Limit to prevent localStorage bloat
+}
+
+// NEW: Task recovery types
+export interface TaskRecoveryInfo {
+  runId: string;
+  query: string;
+  status: 'processing' | 'complete' | 'failed' | 'canceled';
+  timestamp: number;
+  model?: string;
+  writeModel?: string;
+}
+
+export interface TaskStatusResponse {
+  runId: string;
+  status: 'PENDING' | 'EXECUTING' | 'COMPLETED' | 'FAILED' | 'CANCELED' | 'QUEUED' | 'TIMED_OUT' | 'WAITING_FOR_DEPLOY' | 'REATTEMPTING' | 'FROZEN' | 'CRASHED' | 'INTERRUPTED' | 'SYSTEM_FAILURE' | 'DELAYED' | 'EXPIRED';
+  metadata?: WebSearchMetadata;
+  output?: WebSearchOutput;
+  error?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PublicTokenResponse {
+  publicAccessToken: string;
+  runId: string;
+  expiresAt?: string;
 }
 
 // Application state management
@@ -130,6 +160,7 @@ export interface SearchHistoryProps {
   onSelectEntry: (entry: SearchHistoryEntry) => void;
   onDeleteEntry: (id: string) => void;
   onClearHistory: () => void;
+  onResumeTask?: (runId: string, publicAccessToken?: string) => void;
 }
 
 export interface HistoryEntryProps {

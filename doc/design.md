@@ -1,7 +1,7 @@
 # WebSearch Agent Frontend Design
 
 ## Overview
-A Next.js frontend application that triggers the `websearch-agent` Trigger.dev task, monitors progress in real-time, and displays results with comprehensive theming support.
+A Next.js frontend application that triggers the `websearch-agent` Trigger.dev task with **persistent task tracking**, monitors progress in real-time, and displays results with comprehensive theming support. The application now supports task recovery and resumption across page refreshes and browser restarts.
 
 ## Current Architecture
 
@@ -12,6 +12,7 @@ A Next.js frontend application that triggers the `websearch-agent` Trigger.dev t
 - **Real-time Updates**: Trigger.dev React hooks for progress monitoring
 - **Authentication**: Password-based authentication with session management
 - **Markdown Rendering**: React-markdown with syntax highlighting and Mermaid diagram support
+- **Task Persistence**: localStorage-based task tracking with server-side recovery APIs
 
 ### Core Dependencies
 ```json
@@ -28,39 +29,49 @@ A Next.js frontend application that triggers the `websearch-agent` Trigger.dev t
 }
 ```
 
-## Features
+## Key Features
 
-### 1. Task Triggering & Management
+### 1. Persistent Task Tracking & Recovery ⭐ NEW
+- **Immediate Task Persistence**: Tasks saved to localStorage when triggered, not just on completion
+- **Status Tracking**: Track processing, complete, failed, and canceled task states
+- **Automatic Recovery Detection**: App detects interrupted tasks on load and offers recovery
+- **Server-side Status Checking**: API endpoints to verify task status via Trigger.dev SDK
+- **Token Regeneration**: Generate new publicAccessTokens for resuming real-time monitoring
+- **Seamless Reconnection**: Resume monitoring in-progress tasks after page refresh
+
+### 2. Task Triggering & Management
 - **Search Form**: Input query with configurable search parameters
 - **Authentication**: Password-protected access with session persistence
 - **Task Execution**: Trigger websearch-agent with real-time progress tracking
 - **Error Handling**: Comprehensive error boundaries and user feedback
 
-### 2. Real-time Progress Monitoring
+### 3. Real-time Progress Monitoring
 - **Live Updates**: WebSocket-based progress updates via Trigger.dev Realtime
 - **Progress Visualization**: Animated progress bars and status indicators
 - **Action Timeline**: Historical view of search actions and iterations
 - **Current Status**: Real-time display of current search operation
+- **Reconnection Support**: Resume monitoring after interruption
 
-### 3. Result Display & Rendering
+### 4. Enhanced Search History Management
+- **Persistent Storage**: Browser-based persistence with task status tracking
+- **Status-aware History**: Display processing, complete, failed, and canceled entries
+- **Recovery Interface**: Dedicated UI for resuming interrupted tasks
+- **History Panel**: Slide-out interface with status indicators and resume functionality
+- **Entry Management**: View, delete, and navigate historical results
+- **Size Limits**: Maximum 50 entries with automatic cleanup
+
+### 5. Result Display & Rendering
 - **Markdown Support**: Full markdown rendering with GitHub Flavored Markdown
 - **Syntax Highlighting**: Code blocks with language-specific highlighting
 - **Mermaid Diagrams**: Interactive diagram rendering
 - **Responsive Layout**: Mobile-optimized result display
 
-### 4. Theme System
+### 6. Theme System
 - **Multi-theme Support**: Light, dark, and auto (system preference) themes
 - **Persistent Preferences**: Theme selection stored in localStorage
 - **Smooth Transitions**: Animated theme switching with CSS transitions
 - **Comprehensive Coverage**: All components support both themes
 - **Accessibility**: WCAG 2.1 AA compliant contrast ratios
-
-### 5. Search History Management
-- **Local Storage**: Browser-based persistence of search results
-- **History Panel**: Slide-out interface for viewing past searches
-- **Entry Management**: View, delete, and navigate historical results
-- **Auto-save**: Automatic saving of successful search results
-- **Size Limits**: Maximum 50 entries to prevent storage bloat
 
 ## Component Architecture
 
@@ -68,147 +79,160 @@ A Next.js frontend application that triggers the `websearch-agent` Trigger.dev t
 ```
 src/
 ├── app/
-│   ├── layout.tsx           # Root layout with ThemeProvider
-│   ├── page.tsx             # Main search interface
-│   └── globals.css          # Comprehensive CSS variables system
+│   ├── api/
+│   │   ├── task-status/[runId]/route.ts    # Task status recovery API
+│   │   ├── generate-token/route.ts         # Token regeneration API
+│   │   └── trigger-search/route.ts         # Task triggering API
+│   ├── layout.tsx                          # Root layout with ThemeProvider
+│   ├── page.tsx                            # Main search interface
+│   └── globals.css                         # Comprehensive CSS variables system
 ├── components/
-│   ├── SearchForm.tsx       # Query input and configuration
-│   ├── ProgressView.tsx     # Real-time progress display
-│   ├── ResultView.tsx       # Markdown result rendering
-│   ├── PasswordAuth.tsx     # Authentication interface
-│   ├── ThemeToggle.tsx      # Theme switching control
-│   ├── MarkdownRenderer.tsx # Enhanced markdown rendering
-│   ├── ErrorBoundary.tsx    # Error handling wrapper
-│   ├── SearchHistory.tsx    # Search history panel
-│   ├── HistoryEntry.tsx     # Individual history entry
-│   └── HistoryToggle.tsx    # History panel toggle button
+│   ├── SearchForm.tsx                      # Query input and configuration
+│   ├── ProgressView.tsx                    # Real-time progress display
+│   ├── ResultView.tsx                      # Markdown result rendering
+│   ├── PasswordAuth.tsx                    # Authentication interface
+│   ├── ThemeToggle.tsx                     # Theme switching control
+│   ├── MarkdownRenderer.tsx                # Enhanced markdown rendering
+│   ├── ErrorBoundary.tsx                   # Error handling wrapper
+│   ├── SearchHistory.tsx                   # Enhanced history panel
+│   ├── HistoryEntry.tsx                    # Status-aware history entry
+│   ├── TaskRecoveryNotification.tsx        # Recovery notification UI
+│   ├── ProcessingTaskItem.tsx              # Resume task component
+│   ├── ProcessingIndicator.tsx             # Processing status indicator
+│   └── TaskStatusBadge.tsx                 # Status badge component
 ├── contexts/
-│   └── ThemeContext.tsx     # Global theme state management
+│   └── ThemeContext.tsx                    # Global theme state management
 ├── hooks/
-│   ├── useWebSearch.ts      # Custom search hook
-│   └── useSearchHistory.ts  # Search history management hook
+│   ├── useWebSearch.ts                     # Enhanced search hook with persistence
+│   ├── useSearchHistory.ts                 # Status-aware history management
+│   ├── useTaskRecovery.ts                  # Task recovery logic
+│   └── useTaskReconnection.ts              # Task reconnection logic
 ├── lib/
-│   ├── theme-utils.ts       # Theme utility functions
-│   └── localStorage.ts      # localStorage utility functions
+│   ├── theme-utils.ts                      # Theme utility functions
+│   └── localStorage.ts                     # Enhanced storage utilities
 └── types/
-    ├── websearch.ts         # Search-related types
-    └── theme.ts             # Theme-related types
+    ├── websearch.ts                        # Enhanced search-related types
+    └── theme.ts                            # Theme-related types
 ```
 
 ### State Management
 ```typescript
-// Application State
+// Enhanced Application State
 interface AppState {
   stage: 'idle' | 'processing' | 'complete' | 'error';
   query: string;
   runId?: string;
   publicAccessToken?: string;
-  progress: {
-    percentage: number;
-    currentAction: string;
-    actionHistory: string[];
-    currentIteration: number;
-    totalIterations: number;
-  };
+  progress: WebSearchMetadata;
   result?: WebSearchOutput;
   error?: string;
-  // History state
-  showHistory: boolean;
-  selectedHistoryEntry?: SearchHistoryEntry;
+  // Recovery state
+  recoverableTasks: TaskRecoveryInfo[];
+  isCheckingRecovery: boolean;
 }
 
-// Search History Types
+// Enhanced Search History Types
 interface SearchHistoryEntry {
-  id: string;
+  id: string;                                        // Generated unique ID
+  query: string;                                     # Original search query
+  runId: string;                                     # Trigger.dev run identifier
+  status: 'processing' | 'complete' | 'failed' | 'canceled'; # Task status
+  result?: WebSearchOutput;                          # Optional until completed
+  error?: string;                                    # Error message if failed
+  timestamp: number;                                 # When task was triggered
+  completedAt?: number;                              # When task completed
+  model?: string;                                    # Model used for search
+  writeModel?: string;                               # Model used for writing
+}
+
+// Task Recovery Types
+interface TaskRecoveryInfo {
+  runId: string;
   query: string;
-  result: WebSearchOutput;
+  status: 'processing';
   timestamp: number;
   model?: string;
   writeModel?: string;
 }
 
-interface SearchHistory {
-  entries: SearchHistoryEntry[];
-  maxEntries: number;
-}
-
-// Theme State
-interface ThemeContextType {
-  theme: 'light' | 'dark' | 'auto';
-  actualTheme: 'light' | 'dark';
-  setTheme: (theme: 'light' | 'dark' | 'auto') => void;
-  toggleTheme: () => void;
+interface TaskStatusResponse {
+  runId: string;
+  status: 'PENDING' | 'EXECUTING' | 'COMPLETED' | 'FAILED' | 'CANCELED';
+  metadata?: WebSearchMetadata;
+  output?: WebSearchOutput;
+  error?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 ```
 
 ## Data Flow
 
-### Search Process
+### Enhanced Search Process
 1. **Authentication**: User enters password to access the application
 2. **Query Input**: User submits search query with optional parameters
-3. **Task Trigger**: Frontend triggers websearch-agent via Trigger.dev API
-4. **Progress Monitoring**: Real-time updates via WebSocket connection
-5. **Result Display**: Final answer rendered with full markdown support
-6. **History Saving**: Successful results automatically saved to localStorage
-7. **Session Management**: Results cached for session duration
+3. **Immediate Persistence**: Task saved to localStorage with "processing" status
+4. **Task Trigger**: Frontend triggers websearch-agent via Trigger.dev API
+5. **Progress Monitoring**: Real-time updates via WebSocket connection
+6. **Result Display**: Final answer rendered with full markdown support
+7. **Status Update**: History entry updated from "processing" to "complete"
+8. **Session Management**: Results cached for session duration
 
-### History Management
-1. **Auto-save**: Completed searches automatically saved to browser storage
-2. **History Access**: Toggle button in header reveals history panel
-3. **Entry Navigation**: Click entries to view previous search results
-4. **Entry Management**: Delete individual entries or clear all history
-5. **Storage Limits**: Automatic cleanup when exceeding 50 entries
+### Task Recovery Flow ⭐ NEW
+1. **Detection**: App checks localStorage for processing tasks on load
+2. **Status Verification**: Server-side API checks current task status via `runs.retrieve()`
+3. **Recovery Notification**: UI displays recoverable tasks to user
+4. **Token Regeneration**: New publicAccessToken generated for real-time monitoring
+5. **Reconnection**: Resume monitoring with new token or display completed results
+6. **History Update**: Update localStorage entries based on current server status
 
-### Theme Management
-1. **Initialization**: Theme loaded from localStorage or system preference
-2. **User Control**: Theme toggle allows manual theme selection
-3. **System Integration**: Auto theme follows system dark/light preference
-4. **Persistence**: Theme choice saved across browser sessions
-5. **Application**: CSS variables dynamically updated for all components
-
-## UI Design System
-
-### Color Palette
-```css
-/* Light Theme */
---color-background: #ffffff;
---color-foreground: #171717;
---color-primary: #3b82f6;
---color-surface: #f9fafb;
---color-border: #e5e7eb;
-
-/* Dark Theme */
---color-background: #0a0a0a;
---color-foreground: #ededed;
---color-primary: #60a5fa;
---color-surface: #1f1f1f;
---color-border: #374151;
+### Task Interrupt & Resume Workflow ⭐ NEW
+```
+User Action → Page Refresh/Close
+     ↓
+App Load → Check localStorage for processing tasks
+     ↓
+Server API → runs.retrieve(runId) for each task
+     ↓
+Status Check → PENDING/EXECUTING → Generate new token → Resume monitoring
+             → COMPLETED → Update history → Show result
+             → FAILED → Update history → Show error
+             → NOT_FOUND → Mark as failed → Clean up
 ```
 
-### Typography
-- **Primary Font**: Geist Sans (system fallback)
-- **Monospace Font**: Geist Mono for code blocks
-- **Hierarchy**: Consistent text sizing with semantic classes
-- **Accessibility**: Proper contrast ratios in both themes
+## Server-Side APIs ⭐ NEW
 
-### Layout Structure
+### Task Status Endpoint
+```typescript
+// GET /api/task-status/[runId]
+// Returns current task status, metadata, output, and error information
+interface TaskStatusResponse {
+  runId: string;
+  status: 'PENDING' | 'EXECUTING' | 'COMPLETED' | 'FAILED' | 'CANCELED';
+  metadata?: WebSearchMetadata;
+  output?: WebSearchOutput;
+  error?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
 ```
-┌─────────────────────────────────────┐
-│ Header: Logo + History + Theme      │
-├─────────────────────────────────────┤
-│ Main Content:                       │
-│ ┌─────────────────────────────────┐ │
-│ │ Auth / Search / Progress / Result│ │
-│ └─────────────────────────────────┘ │
-│ History Panel (slide-out)           │
-└─────────────────────────────────────┘
+
+### Token Generation Endpoint
+```typescript
+// POST /api/generate-token
+// Generates new publicAccessToken for specific runId
+interface PublicTokenResponse {
+  publicAccessToken: string;
+  runId: string;
+  expiresAt: string; // 24 hours from generation
+}
 ```
 
 ## Integration Points
 
 ### Trigger.dev Integration
 ```typescript
-// Task Input
+// Enhanced Task Input
 interface WebSearchInput {
   query: string;
   searchParams?: {
@@ -227,6 +251,7 @@ interface WebSearchMetadata {
   currentAction?: string;
   totalIterations: number;
   currentIteration: number;
+  lastUpdated: string;
 }
 
 // Task Output
@@ -240,30 +265,41 @@ interface WebSearchOutput {
 }
 ```
 
-### Authentication Flow
-- Password-based authentication with configurable credentials
-- Session persistence via secure HTTP-only approach
-- Automatic session validation and renewal
-- Graceful handling of authentication failures
+### Recovery Integration
+- **Server-side Recovery**: Uses `runs.retrieve(runId)` to check task status
+- **Token Management**: `auth.createPublicToken()` for new client-side tokens
+- **Real-time Reconnection**: Seamless integration with existing `useRealtimeRun` hook
+- **Error Handling**: Graceful handling of expired, not found, or failed tasks
 
-## Performance Considerations
-- **Server Components**: Used where possible for optimal performance
-- **Client Components**: Limited to interactive elements only
-- **Code Splitting**: Automatic Next.js code splitting
-- **Theme Transitions**: Optimized CSS transitions without layout shifts
-- **Real-time Updates**: Efficient WebSocket connection management
-- **Markdown Rendering**: Optimized rendering with syntax highlighting caching
+## UI Design System
 
-## Accessibility Features
-- **WCAG 2.1 AA Compliance**: Proper contrast ratios and focus management
-- **Keyboard Navigation**: Full keyboard accessibility for all interactive elements
-- **Screen Reader Support**: Proper ARIA labels and semantic HTML
-- **Reduced Motion**: Respects user's motion preferences
-- **High Contrast**: Enhanced contrast mode support
+### Enhanced Layout Structure
+```
+┌─────────────────────────────────────┐
+│ Header: Logo + History + Theme      │
+├─────────────────────────────────────┤
+│ Recovery Notification (if needed)   │ ⭐ NEW
+├─────────────────────────────────────┤
+│ Main Content:                       │
+│ ┌─────────────────────────────────┐ │
+│ │ Auth / Search / Progress / Result│ │
+│ └─────────────────────────────────┘ │
+│ Enhanced History Panel (slide-out)  │
+│ - Processing indicators             │ ⭐ NEW
+│ - Status badges                     │ ⭐ NEW
+│ - Resume buttons                    │ ⭐ NEW
+└─────────────────────────────────────┘
+```
 
-## Security Considerations
-- **Authentication**: Secure password-based access control
-- **Token Management**: Secure handling of Trigger.dev tokens
-- **Session Security**: Proper session management and cleanup
-- **Input Validation**: Comprehensive input sanitization
-- **Error Handling**: Secure error messages without sensitive data exposure
+### Status Indicators ⭐ NEW
+```css
+/* Processing Status */
+.status-processing { color: var(--color-warning); }
+/* Complete Status */
+.status-complete { color: var(--color-success); }
+/* Failed Status */
+.status-failed { color: var(--color-error); }
+/* Canceled Status */
+.status-canceled { color: var(--color-text-secondary); }
+```
+

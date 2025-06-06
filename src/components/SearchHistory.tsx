@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { SearchHistoryProps } from '@/types/websearch';
 import HistoryEntry from './HistoryEntry';
+import ProcessingTaskItem from './ProcessingTaskItem';
 
 export default function SearchHistory({
   isOpen,
@@ -11,14 +12,22 @@ export default function SearchHistory({
   onSelectEntry,
   onDeleteEntry,
   onClearHistory,
+  onResumeTask,
 }: SearchHistoryProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'processing' | 'complete' | 'failed' | 'canceled'>('all');
 
-  // Filter entries based on search term
-  const filteredEntries = entries.filter(entry =>
-    entry.query.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter entries based on search term and status
+  const filteredEntries = entries.filter(entry => {
+    const matchesSearch = entry.query.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || entry.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Separate processing and completed entries for better organization
+  const processingEntries = filteredEntries.filter(entry => entry.status === 'processing');
+  const completedEntries = filteredEntries.filter(entry => entry.status !== 'processing');
 
   const handleClearHistory = () => {
     if (showClearConfirm) {
@@ -160,9 +169,10 @@ export default function SearchHistory({
           </div>
         </div>
 
-        {/* Search bar */}
+        {/* Search and Filter bar */}
         {entries.length > 0 && (
-          <div className="p-4">
+          <div className="p-4 space-y-3">
+            {/* Search input */}
             <div className="relative">
               <input
                 type="text"
@@ -198,6 +208,25 @@ export default function SearchHistory({
                 <circle cx="11" cy="11" r="8" />
                 <path d="M21 21l-4.35-4.35" />
               </svg>
+            </div>
+
+            {/* Status filter */}
+            <div className="flex gap-2 overflow-x-auto">
+              {(['all', 'processing', 'complete', 'failed', 'canceled'] as const).map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className="px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors theme-transition"
+                  style={{
+                    backgroundColor: statusFilter === status ? 'var(--color-primary)' : 'var(--color-surface)',
+                    color: statusFilter === status ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)',
+                    borderColor: statusFilter === status ? 'var(--color-primary)' : 'var(--color-border)',
+                    borderWidth: '1px'
+                  }}
+                >
+                  {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -269,15 +298,47 @@ export default function SearchHistory({
             </div>
           ) : (
             // History entries
-            <div className="space-y-3">
-              {filteredEntries.map((entry) => (
-                <HistoryEntry
-                  key={entry.id}
-                  entry={entry}
-                  onSelect={() => onSelectEntry(entry)}
-                  onDelete={() => onDeleteEntry(entry.id)}
-                />
-              ))}
+            <div className="space-y-4">
+              {/* Processing tasks section */}
+              {processingEntries.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                    Running Tasks ({processingEntries.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {processingEntries.map((entry) => (
+                      <ProcessingTaskItem
+                        key={entry.id}
+                        entry={entry}
+                        onResume={onResumeTask}
+                        onViewResult={onSelectEntry}
+                        onDelete={onDeleteEntry}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Completed tasks section */}
+              {completedEntries.length > 0 && (
+                <div>
+                  {processingEntries.length > 0 && (
+                    <h3 className="text-sm font-medium mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                      Completed Tasks ({completedEntries.length})
+                    </h3>
+                  )}
+                  <div className="space-y-3">
+                    {completedEntries.map((entry) => (
+                      <HistoryEntry
+                        key={entry.id}
+                        entry={entry}
+                        onSelect={() => onSelectEntry(entry)}
+                        onDelete={() => onDeleteEntry(entry.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

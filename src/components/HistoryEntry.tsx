@@ -1,6 +1,7 @@
 "use client";
 
 import { HistoryEntryProps } from '@/types/websearch';
+import TaskStatusBadge from './TaskStatusBadge';
 
 // Helper function to format timestamp
 function formatTimestamp(timestamp: number): string {
@@ -74,7 +75,8 @@ export default function HistoryEntry({ entry, onSelect, onDelete }: HistoryEntry
             {truncateQuery(entry.query)}
           </div>
           
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs mb-2">
+            <TaskStatusBadge status={entry.status} size="sm" />
             <span
               className="theme-transition"
               style={{ color: 'var(--color-text-secondary)' }}
@@ -100,6 +102,13 @@ export default function HistoryEntry({ entry, onSelect, onDelete }: HistoryEntry
               </>
             )}
           </div>
+          
+          {/* Show error message if failed */}
+          {entry.error && (
+            <div className="text-xs mt-1" style={{ color: 'var(--color-error)' }}>
+              {entry.error}
+            </div>
+          )}
         </div>
 
         {/* Actions */}

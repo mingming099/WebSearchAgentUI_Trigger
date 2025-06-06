@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useWebSearch } from "@/hooks/useWebSearch";
 import { useAuth } from "@/hooks/useAuth";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
+import { useTaskRecovery } from "@/hooks/useTaskRecovery";
 import SearchForm from "@/components/SearchForm";
 import ProgressView from "@/components/ProgressView";
 import ResultView from "@/components/ResultView";
@@ -12,6 +13,7 @@ import PasswordAuth from "@/components/PasswordAuth";
 import ThemeToggle from "@/components/ThemeToggle";
 import HistoryToggle from "@/components/HistoryToggle";
 import SearchHistory from "@/components/SearchHistory";
+import TaskRecoveryNotification from "@/components/TaskRecoveryNotification";
 import { SearchHistoryEntry } from "@/types/websearch";
 
 export default function Home() {
@@ -20,6 +22,12 @@ export default function Home() {
   // History state and functionality
   const historyHook = useSearchHistory();
   const { entries, entryCount, deleteEntry, clearAllHistory, addToHistory } = historyHook;
+
+  // Task recovery functionality
+  const { 
+    recoverableTasks, 
+    isChecking
+  } = useTaskRecovery();
 
   const {
     stage,
@@ -67,6 +75,14 @@ export default function Home() {
 
   const handleBackToCurrentResult = () => {
     setSelectedHistoryEntry(null);
+  };
+
+  const handleResumeTask = (runId: string, publicAccessToken?: string) => {
+    // TODO: Implement task resumption logic
+    // This would involve setting up the real-time monitoring again
+    console.log('Resuming task:', runId, publicAccessToken);
+    // For now, just close history and show a message
+    setShowHistory(false);
   };
 
   // Show loading state while checking authentication
@@ -125,6 +141,13 @@ export default function Home() {
         {/* Main Content */}
         <main className="max-w-6xl mx-auto px-4 py-8">
           <div className="space-y-8">
+            
+            {/* Task Recovery Notification */}
+            <TaskRecoveryNotification
+              recoverableTasks={recoverableTasks}
+              isChecking={isChecking}
+              onViewHistory={() => setShowHistory(true)}
+            />
             
             {/* Search Form - Always visible but disabled during processing */}
             {(isIdle || hasError) && (
@@ -210,7 +233,7 @@ export default function Home() {
             />
 
             {/* Result View - Shown when complete or viewing history */}
-            {selectedHistoryEntry ? (
+            {selectedHistoryEntry && selectedHistoryEntry.result ? (
               <ResultView
                 result={selectedHistoryEntry.result}
                 onNewSearch={handleBackToCurrentResult}
@@ -296,6 +319,7 @@ export default function Home() {
           onSelectEntry={handleSelectHistoryEntry}
           onDeleteEntry={handleDeleteHistoryEntry}
           onClearHistory={handleClearHistory}
+          onResumeTask={handleResumeTask}
         />
       </div>
     </ErrorBoundary>

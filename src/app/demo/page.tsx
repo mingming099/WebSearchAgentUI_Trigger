@@ -8,6 +8,13 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import PasswordAuth from "@/components/PasswordAuth";
 import ThemeToggle, { ThemeToggleCompact } from "@/components/ThemeToggle";
 import MarkdownDemo from "@/components/MarkdownDemo";
+import SearchHistory from "@/components/SearchHistory";
+import TaskRecoveryNotification from "@/components/TaskRecoveryNotification";
+import ProcessingTaskItem from "@/components/ProcessingTaskItem";
+import ProcessingIndicator from "@/components/ProcessingIndicator";
+import HistoryEntry from "@/components/HistoryEntry";
+import TaskStatusBadge from "@/components/TaskStatusBadge";
+import { SearchHistoryEntry, TaskRecoveryInfo } from "@/types/websearch";
 
 // Mock data for demonstrations
 const mockProgressMetadata = {
@@ -109,10 +116,72 @@ For more detailed information, refer to the latest research papers and industry 
   ]
 };
 
+// Mock data for new components
+const mockHistoryEntries: SearchHistoryEntry[] = [
+  {
+    id: "1",
+    query: "Latest developments in artificial intelligence",
+    runId: "run_123456",
+    status: "processing",
+    timestamp: Date.now() - 300000, // 5 minutes ago
+    model: "gpt-4-turbo",
+    writeModel: "claude-3-sonnet"
+  },
+  {
+    id: "2", 
+    query: "Climate change impact on agriculture",
+    runId: "run_123457",
+    status: "complete",
+    timestamp: Date.now() - 3600000, // 1 hour ago
+    completedAt: Date.now() - 3300000, // 55 minutes ago
+    model: "gpt-4",
+    result: mockResult
+  },
+  {
+    id: "3",
+    query: "Quantum computing breakthroughs 2024",
+    runId: "run_123458", 
+    status: "failed",
+    timestamp: Date.now() - 7200000, // 2 hours ago
+    completedAt: Date.now() - 7000000,
+    model: "claude-3-opus",
+    error: "Search timeout - please try again"
+  },
+  {
+    id: "4",
+    query: "Space exploration missions",
+    runId: "run_123459",
+    status: "canceled",
+    timestamp: Date.now() - 86400000, // 1 day ago
+    completedAt: Date.now() - 86300000,
+    model: "gpt-4"
+  }
+];
+
+const mockRecoverableTasks: TaskRecoveryInfo[] = [
+  {
+    runId: "run_123456",
+    query: "Latest developments in artificial intelligence",
+    status: "processing",
+    timestamp: Date.now() - 300000,
+    model: "gpt-4-turbo"
+  },
+  {
+    runId: "run_123460",
+    query: "Machine learning applications in healthcare",
+    status: "processing", 
+    timestamp: Date.now() - 600000,
+    model: "claude-3-sonnet"
+  }
+];
+
 export default function DemoPage() {
   const [demoState, setDemoState] = useState<'idle' | 'processing' | 'complete' | 'error'>('idle');
   const [showPasswordDemo, setShowPasswordDemo] = useState(false);
   const [showMarkdownDemo, setShowMarkdownDemo] = useState(false);
+  const [showHistoryDemo, setShowHistoryDemo] = useState(false);
+  const [showRecoveryDemo, setShowRecoveryDemo] = useState(false);
+  const [isRecoveryChecking, setIsRecoveryChecking] = useState(false);
 
   const handleDemoSearch = (query: string, model?: string, writeModel?: string) => {
     console.log('Demo search:', { query, model, writeModel });
@@ -130,6 +199,31 @@ export default function DemoPage() {
 
   const triggerError = () => {
     setDemoState('error');
+  };
+
+  const handleHistorySelect = (entry: SearchHistoryEntry) => {
+    console.log('Selected history entry:', entry);
+    setShowHistoryDemo(false);
+  };
+
+  const handleHistoryDelete = (id: string) => {
+    console.log('Delete history entry:', id);
+  };
+
+  const handleHistoryClear = () => {
+    console.log('Clear all history');
+  };
+
+  const handleTaskResume = (runId: string, publicAccessToken?: string) => {
+    console.log('Resume task:', runId, publicAccessToken);
+  };
+
+  const handleRecoveryToggle = () => {
+    setIsRecoveryChecking(true);
+    setTimeout(() => {
+      setIsRecoveryChecking(false);
+      setShowRecoveryDemo(!showRecoveryDemo);
+    }, 2000);
   };
 
   return (
@@ -242,8 +336,165 @@ export default function DemoPage() {
                 >
                   {showMarkdownDemo ? 'Hide' : 'Show'} Markdown Demo
                 </button>
+                <button
+                  onClick={() => setShowHistoryDemo(!showHistoryDemo)}
+                  className="px-4 py-2 rounded-lg transition-colors theme-transition"
+                  style={{
+                    backgroundColor: showHistoryDemo ? 'var(--color-accent)' : 'var(--color-surface-hover)',
+                    color: showHistoryDemo ? 'var(--color-text-inverse)' : 'var(--color-text)',
+                    borderColor: 'var(--color-border)',
+                    borderWidth: '1px'
+                  }}
+                >
+                  {showHistoryDemo ? 'Hide' : 'Show'} History Demo
+                </button>
+                <button
+                  onClick={handleRecoveryToggle}
+                  className="px-4 py-2 rounded-lg transition-colors theme-transition"
+                  style={{
+                    backgroundColor: showRecoveryDemo ? 'var(--color-accent)' : 'var(--color-surface-hover)',
+                    color: showRecoveryDemo ? 'var(--color-text-inverse)' : 'var(--color-text)',
+                    borderColor: 'var(--color-border)',
+                    borderWidth: '1px'
+                  }}
+                >
+                  {showRecoveryDemo ? 'Hide' : 'Show'} Recovery Demo
+                </button>
               </div>
             </section>
+
+            {/* Task Recovery Notification Demo */}
+            {(showRecoveryDemo || isRecoveryChecking) && (
+              <section>
+                <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+                  Task Recovery Notification
+                </h2>
+                <div className="space-y-4">
+                  <TaskRecoveryNotification
+                    recoverableTasks={showRecoveryDemo ? mockRecoverableTasks : []}
+                    isChecking={isRecoveryChecking}
+                    onViewHistory={() => setShowHistoryDemo(true)}
+                    onDismiss={() => setShowRecoveryDemo(false)}
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* Task Status Badges Demo */}
+            <section>
+              <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+                Task Status Badges
+              </h2>
+              <div className="space-y-6">
+                {/* Different sizes */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>
+                    Badge Sizes
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <TaskStatusBadge status="processing" size="sm" />
+                    <TaskStatusBadge status="processing" size="md" />
+                    <TaskStatusBadge status="processing" size="lg" />
+                  </div>
+                </div>
+
+                {/* Different statuses */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>
+                    All Status Types
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <TaskStatusBadge status="processing" />
+                    <TaskStatusBadge status="complete" />
+                    <TaskStatusBadge status="failed" />
+                    <TaskStatusBadge status="canceled" />
+                  </div>
+                </div>
+
+                {/* Without icons */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>
+                    Without Icons
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <TaskStatusBadge status="processing" showIcon={false} />
+                    <TaskStatusBadge status="complete" showIcon={false} />
+                    <TaskStatusBadge status="failed" showIcon={false} />
+                    <TaskStatusBadge status="canceled" showIcon={false} />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Processing Indicator Demo */}
+            <section>
+              <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+                Processing Indicator
+              </h2>
+              <div className="space-y-4">
+                <ProcessingIndicator
+                  runId="run_demo_123"
+                  query="Analyzing market trends for renewable energy"
+                  timestamp={Date.now() - 180000} // 3 minutes ago
+                  onResume={(runId) => console.log('Resume task:', runId)}
+                />
+                <ProcessingIndicator
+                  runId="run_demo_124"
+                  query="Research on quantum computing applications"
+                  timestamp={Date.now() - 600000} // 10 minutes ago
+                  onResume={(runId) => console.log('Resume task:', runId)}
+                  isResuming={true}
+                />
+              </div>
+            </section>
+
+            {/* History Entry Demo */}
+            <section>
+              <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+                History Entries
+              </h2>
+              <div className="space-y-3">
+                {mockHistoryEntries.map((entry) => (
+                  <HistoryEntry
+                    key={entry.id}
+                    entry={entry}
+                    onSelect={() => console.log('Selected:', entry.query)}
+                    onDelete={() => console.log('Delete:', entry.id)}
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* Processing Task Item Demo */}
+            <section>
+              <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
+                Processing Task Items
+              </h2>
+              <div className="space-y-4">
+                {mockHistoryEntries.map((entry) => (
+                  <ProcessingTaskItem
+                    key={entry.id}
+                    entry={entry}
+                    onResume={handleTaskResume}
+                    onViewResult={handleHistorySelect}
+                    onDelete={handleHistoryDelete}
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* Search History Panel Demo */}
+            {showHistoryDemo && (
+              <SearchHistory
+                isOpen={showHistoryDemo}
+                onClose={() => setShowHistoryDemo(false)}
+                entries={mockHistoryEntries}
+                onSelectEntry={handleHistorySelect}
+                onDeleteEntry={handleHistoryDelete}
+                onClearHistory={handleHistoryClear}
+                onResumeTask={handleTaskResume}
+              />
+            )}
 
             {/* Password Auth Demo */}
             {showPasswordDemo && (
