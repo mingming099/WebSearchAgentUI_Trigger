@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MarkdownEditor from './MarkdownEditor';
 import MarkdownRenderer from './MarkdownRenderer';
+import ExportDropdown from './ExportDropdown';
 
 type ViewMode = 'edit' | 'preview';
 
 export default function MarkdownViewer() {
   const [content, setContent] = useState('');
   const [mode, setMode] = useState<ViewMode>('edit');
+  const markdownRendererRef = useRef<HTMLDivElement>(null);
 
   // Load content from localStorage on mount
   useEffect(() => {
@@ -146,6 +148,14 @@ export default function MarkdownViewer() {
             {content.length} characters
           </div>
           
+          {/* Export Dropdown - only show in preview mode with content */}
+          {mode === 'preview' && content && (
+            <ExportDropdown 
+              contentRef={markdownRendererRef}
+              disabled={!content}
+            />
+          )}
+          
           {/* Clear Button */}
           <button
             onClick={handleClearContent}
@@ -219,7 +229,7 @@ Happy writing! 🚀"
         ) : (
           <div className="p-4">
             {content ? (
-              <MarkdownRenderer content={content} />
+              <MarkdownRenderer ref={markdownRendererRef} content={content} />
             ) : (
               <div 
                 className="text-center py-12 theme-transition"

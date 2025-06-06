@@ -195,38 +195,39 @@ const MermaidDiagram: React.FC<{ chart: string }> = ({ chart }) => {
   );
 };
 
-export default function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
-  const { actualTheme } = useTheme();
+const MarkdownRenderer = React.forwardRef<HTMLDivElement, MarkdownRendererProps>(
+  ({ content, className = "" }, ref) => {
+    const { actualTheme } = useTheme();
 
-  // Dynamic highlight.js theme loading
-  useEffect(() => {
-    // Remove existing highlight.js stylesheets
-    const existingLinks = document.querySelectorAll('link[data-highlight-theme]');
-    existingLinks.forEach(link => link.remove());
-    
-    // Add appropriate theme
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.setAttribute('data-highlight-theme', 'true');
-    
-    if (actualTheme === 'dark') {
-      // Load dark theme
-      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
-    } else {
-      // Load light theme
-      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
-    }
-    
-    document.head.appendChild(link);
-    
-    // Cleanup function
-    return () => {
-      const linkToRemove = document.querySelector('link[data-highlight-theme]');
-      if (linkToRemove) {
-        linkToRemove.remove();
+    // Dynamic highlight.js theme loading
+    useEffect(() => {
+      // Remove existing highlight.js stylesheets
+      const existingLinks = document.querySelectorAll('link[data-highlight-theme]');
+      existingLinks.forEach(link => link.remove());
+      
+      // Add appropriate theme
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.setAttribute('data-highlight-theme', 'true');
+      
+      if (actualTheme === 'dark') {
+        // Load dark theme
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
+      } else {
+        // Load light theme
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
       }
-    };
-  }, [actualTheme]);
+      
+      document.head.appendChild(link);
+      
+      // Cleanup function
+      return () => {
+        const linkToRemove = document.querySelector('link[data-highlight-theme]');
+        if (linkToRemove) {
+          linkToRemove.remove();
+        }
+      };
+    }, [actualTheme]);
 
   const components: Components = {
     // Custom pre renderer (for code blocks)
@@ -404,15 +405,20 @@ export default function MarkdownRenderer({ content, className = "" }: MarkdownRe
     },
   };
 
-  return (
-    <div className={`prose prose-gray max-w-none ${className}`}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight, rehypeRaw]}
-        components={components}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
-} 
+    return (
+      <div ref={ref} className={`prose prose-gray max-w-none ${className}`}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeHighlight, rehypeRaw]}
+          components={components}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+);
+
+MarkdownRenderer.displayName = 'MarkdownRenderer';
+
+export default MarkdownRenderer; 
