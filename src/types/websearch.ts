@@ -134,6 +134,8 @@ export interface SearchFormProps {
 export interface ProgressViewProps {
   metadata: WebSearchMetadata;
   isVisible: boolean;
+  onCancel?: () => void;        // Cancel button handler
+  isCanceling?: boolean;        // Cancel loading state
 }
 
 export interface ResultViewProps {
@@ -180,4 +182,14 @@ export interface RunStatus {
   status: 'PENDING' | 'EXECUTING' | 'COMPLETED' | 'FAILED' | 'CANCELED';
   output?: WebSearchOutput;
   metadata?: WebSearchMetadata;
-} 
+}
+
+// Cancel API types
+export interface CancelTaskRequest {
+  runId: string;
+}
+
+export interface CancelTaskResponse {
+  success: boolean;
+  message: string;
+}

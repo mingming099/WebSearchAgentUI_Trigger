@@ -39,9 +39,11 @@ export default function Home() {
     isComplete,
     hasError,
     isIdle,
+    isCanceling,
     triggerSearch,
     resetSearch,
     retrySearch,
+    cancelTask,
   } = useWebSearch(addToHistory);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<SearchHistoryEntry | null>(null);
@@ -83,6 +85,10 @@ export default function Home() {
     console.log('Resuming task:', runId, publicAccessToken);
     // For now, just close history and show a message
     setShowHistory(false);
+  };
+
+  const handleCancelTask = () => {
+    cancelTask();
   };
 
   // Show loading state while checking authentication
@@ -230,6 +236,8 @@ export default function Home() {
             <ProgressView
               metadata={progress}
               isVisible={stage === 'processing'}
+              onCancel={handleCancelTask}
+              isCanceling={isCanceling}
             />
 
             {/* Result View - Shown when complete or viewing history */}

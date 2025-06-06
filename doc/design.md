@@ -43,6 +43,7 @@ A Next.js frontend application that triggers the `websearch-agent` Trigger.dev t
 - **Search Form**: Input query with configurable search parameters
 - **Authentication**: Password-protected access with session persistence
 - **Task Execution**: Trigger websearch-agent with real-time progress tracking
+- **Task Cancellation**: Cancel button to stop processing tasks with confirmation ⭐ NEW
 - **Error Handling**: Comprehensive error boundaries and user feedback
 
 ### 3. Real-time Progress Monitoring
@@ -82,13 +83,14 @@ src/
 │   ├── api/
 │   │   ├── task-status/[runId]/route.ts    # Task status recovery API
 │   │   ├── generate-token/route.ts         # Token regeneration API
-│   │   └── trigger-search/route.ts         # Task triggering API
+│   │   ├── trigger-search/route.ts         # Task triggering API
+│   │   └── cancel-task/route.ts            # Task cancellation API ⭐ NEW
 │   ├── layout.tsx                          # Root layout with ThemeProvider
 │   ├── page.tsx                            # Main search interface
 │   └── globals.css                         # Comprehensive CSS variables system
 ├── components/
 │   ├── SearchForm.tsx                      # Query input and configuration
-│   ├── ProgressView.tsx                    # Real-time progress display
+│   ├── ProgressView.tsx                    # Real-time progress display with cancel button ⭐ UPDATED
 │   ├── ResultView.tsx                      # Markdown result rendering
 │   ├── PasswordAuth.tsx                    # Authentication interface
 │   ├── ThemeToggle.tsx                     # Theme switching control
@@ -103,7 +105,7 @@ src/
 ├── contexts/
 │   └── ThemeContext.tsx                    # Global theme state management
 ├── hooks/
-│   ├── useWebSearch.ts                     # Enhanced search hook with persistence
+│   ├── useWebSearch.ts                     # Enhanced search hook with persistence and cancel ⭐ UPDATED
 │   ├── useSearchHistory.ts                 # Status-aware history management
 │   ├── useTaskRecovery.ts                  # Task recovery logic
 │   └── useTaskReconnection.ts              # Task reconnection logic
@@ -129,6 +131,8 @@ interface AppState {
   // Recovery state
   recoverableTasks: TaskRecoveryInfo[];
   isCheckingRecovery: boolean;
+  // Cancel state ⭐ NEW
+  isCanceling?: boolean;
 }
 
 // Enhanced Search History Types
@@ -174,9 +178,10 @@ interface TaskStatusResponse {
 3. **Immediate Persistence**: Task saved to localStorage with "processing" status
 4. **Task Trigger**: Frontend triggers websearch-agent via Trigger.dev API
 5. **Progress Monitoring**: Real-time updates via WebSocket connection
-6. **Result Display**: Final answer rendered with full markdown support
-7. **Status Update**: History entry updated from "processing" to "complete"
-8. **Session Management**: Results cached for session duration
+6. **Task Cancellation**: Optional user-initiated cancellation via cancel button ⭐ NEW
+7. **Result Display**: Final answer rendered with full markdown support
+8. **Status Update**: History entry updated from "processing" to "complete/canceled"
+9. **Session Management**: Results cached for session duration
 
 ### Task Recovery Flow ⭐ NEW
 1. **Detection**: App checks localStorage for processing tasks on load
@@ -201,6 +206,20 @@ Status Check → PENDING/EXECUTING → Generate new token → Resume monitoring
 ```
 
 ## Server-Side APIs ⭐ NEW
+
+### Task Cancellation Endpoint ⭐ NEW
+```typescript
+// POST /api/cancel-task
+// Cancels a running task using Trigger.dev SDK
+interface CancelTaskRequest {
+  runId: string;
+}
+
+interface CancelTaskResponse {
+  success: boolean;
+  message: string;
+}
+```
 
 ### Task Status Endpoint
 ```typescript
@@ -271,6 +290,13 @@ interface WebSearchOutput {
 - **Real-time Reconnection**: Seamless integration with existing `useRealtimeRun` hook
 - **Error Handling**: Graceful handling of expired, not found, or failed tasks
 
+### Task Cancellation Integration ⭐ NEW
+- **Server-side Cancellation**: Uses `runs.cancel(runId)` to cancel running tasks
+- **Client-side Cancel**: Cancel button in ProgressView with confirmation dialog
+- **State Management**: Tracks canceling state and updates UI accordingly
+- **Real-time Updates**: Cancellation detected via existing `useRealtimeRun` hook
+- **History Integration**: Canceled tasks properly marked in localStorage
+
 ## UI Design System
 
 ### Enhanced Layout Structure
@@ -283,6 +309,7 @@ interface WebSearchOutput {
 │ Main Content:                       │
 │ ┌─────────────────────────────────┐ │
 │ │ Auth / Search / Progress / Result│ │
+│ │ - Progress View with Cancel Btn │ │ ⭐ NEW
 │ └─────────────────────────────────┘ │
 │ Enhanced History Panel (slide-out)  │
 │ - Processing indicators             │ ⭐ NEW

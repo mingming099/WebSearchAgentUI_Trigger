@@ -7,7 +7,9 @@ import {
   WebSearchInput, 
   WebSearchOutput, 
   WebSearchMetadata,
-  TriggerHandle 
+  TriggerHandle,
+  CancelTaskRequest,
+  CancelTaskResponse
 } from "@/types/websearch";
 import { triggerWebSearchAgent } from "@/lib/trigger";
 import { formatErrorMessage, getDefaultModel, getDefaultWriteModel } from "@/lib/utils";
@@ -39,6 +41,7 @@ type AddToHistoryFn = (query: string, result: WebSearchOutput, model?: string, w
 
 export function useWebSearch(addToHistory?: AddToHistoryFn) {
   const [state, setState] = useState<AppState>(defaultAppState);
+  const [isCanceling, setIsCanceling] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Real-time subscription to run updates
@@ -272,6 +275,54 @@ export function useWebSearch(addToHistory?: AddToHistoryFn) {
     }
   }, [state.query, triggerSearch]);
 
+  // Cancel current task
+  const cancelTask = useCallback(async () => {
+    if (!state.runId || state.stage !== 'processing' || isCanceling) {
+      return;
+    }
+
+    try {
+      setIsCanceling(true);
+
+      const cancelRequest: CancelTaskRequest = {
+        runId: state.runId,
+      };
+
+      const response = await fetch('/api/cancel-task', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cancelRequest),
+      });
+
+      const result: CancelTaskResponse = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // Update state to show canceling
+      setState(prev => ({
+        ...prev,
+        progress: {
+          ...prev.progress,
+          currentAction: 'Canceling search...',
+        },
+      }));
+
+      console.log('Task cancellation requested:', state.runId);
+    } catch (error) {
+      console.error('Failed to cancel task:', error);
+      setState(prev => ({
+        ...prev,
+        error: `Failed to cancel task: ${formatErrorMessage(error)}`,
+      }));
+    } finally {
+      setIsCanceling(false);
+    }
+  }, [state.runId, state.stage, isCanceling]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -295,11 +346,13 @@ export function useWebSearch(addToHistory?: AddToHistoryFn) {
     isComplete: state.stage === 'complete',
     hasError: state.stage === 'error',
     isIdle: state.stage === 'idle',
+    isCanceling,
     
     // Actions
     triggerSearch,
     resetSearch,
     retrySearch,
+    cancelTask,
     
     // Real-time data
     run,
