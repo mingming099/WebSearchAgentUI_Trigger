@@ -323,6 +323,24 @@ export function useWebSearch(addToHistory?: AddToHistoryFn) {
     }
   }, [state.runId, state.stage, isCanceling]);
 
+  // Resume task function
+  const resumeTask = useCallback((runId: string, publicAccessToken: string, query: string) => {
+    setState(prev => ({
+      ...prev,
+      stage: 'processing',
+      query: query,
+      runId: runId,
+      publicAccessToken: publicAccessToken,
+      result: undefined,
+      error: undefined,
+      progress: {
+        ...defaultMetadata,
+        currentAction: 'Reconnecting to task...',
+        actionHistory: ['Resuming task monitoring'],
+      },
+    }));
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -353,6 +371,7 @@ export function useWebSearch(addToHistory?: AddToHistoryFn) {
     resetSearch,
     retrySearch,
     cancelTask,
+    resumeTask,
     
     // Real-time data
     run,

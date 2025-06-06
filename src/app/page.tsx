@@ -44,6 +44,7 @@ export default function Home() {
     resetSearch,
     retrySearch,
     cancelTask,
+    resumeTask,
   } = useWebSearch(addToHistory);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<SearchHistoryEntry | null>(null);
@@ -80,10 +81,20 @@ export default function Home() {
   };
 
   const handleResumeTask = (runId: string, publicAccessToken?: string) => {
-    // TODO: Implement task resumption logic
-    // This would involve setting up the real-time monitoring again
-    console.log('Resuming task:', runId, publicAccessToken);
-    // For now, just close history and show a message
+    if (!publicAccessToken) {
+      console.error('Cannot resume task without publicAccessToken');
+      return;
+    }
+
+    // Get the history entry to restore the query
+    const historyEntry = entries.find(entry => entry.runId === runId);
+    if (!historyEntry) {
+      console.error('Cannot find history entry for runId:', runId);
+      return;
+    }
+
+    // Resume the task monitoring
+    resumeTask(runId, publicAccessToken, historyEntry.query);
     setShowHistory(false);
   };
 
