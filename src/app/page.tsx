@@ -105,10 +105,7 @@ export default function Home() {
     setShowHistory(true);
   };
 
-  const handleOpenMarkdownViewer = () => {
-    // TODO: Implement markdown viewer functionality
-    console.log('Markdown viewer will be implemented later');
-  };
+
 
   const handleSelectHistoryEntry = (entry: SearchHistoryEntry) => {
     setSelectedHistoryEntry(entry);
@@ -391,7 +388,6 @@ export default function Home() {
           onClose={() => setShowMenu(false)}
           onNewSearch={handleNewSearch}
           onOpenHistory={handleOpenHistory}
-          onOpenMarkdownViewer={handleOpenMarkdownViewer}
           historyCount={entryCount}
         />
 

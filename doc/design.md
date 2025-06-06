@@ -329,4 +329,3 @@ interface WebSearchOutput {
 /* Canceled Status */
 .status-canceled { color: var(--color-text-secondary); }
 ```
-
