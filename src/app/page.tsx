@@ -12,7 +12,8 @@ import CancelView from "@/components/CancelView";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PasswordAuth from "@/components/PasswordAuth";
 import ThemeToggle from "@/components/ThemeToggle";
-import HistoryToggle from "@/components/HistoryToggle";
+import MenuButton from "@/components/MenuButton";
+import MainMenu from "@/components/MainMenu";
 import SearchHistory from "@/components/SearchHistory";
 import TaskRecoveryNotification from "@/components/TaskRecoveryNotification";
 import { SearchHistoryEntry } from "@/types/websearch";
@@ -48,30 +49,39 @@ export default function Home() {
     cancelTask,
     resumeTask,
   } = useWebSearch(addToHistory);
+  const [showMenu, setShowMenu] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<SearchHistoryEntry | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('search-form');
 
-  // Compute current view based on state
-  const getCurrentView = (): ViewState => {
-    // Priority 1: History viewing
-    if (selectedHistoryEntry) {
-      if (selectedHistoryEntry.result) return 'history-result';
-      if (selectedHistoryEntry.status === 'canceled') return 'history-cancel';
-    }
-    
-    // Priority 2: Current search states
-    if (stage === 'processing') return 'progress';
-    if (stage === 'complete' && result) return 'result';
-    
-    // Priority 3: Default
-    return 'search-form';
-  };
+
 
   // Sync currentView with computed view state
   useEffect(() => {
-    const computedView = getCurrentView();
-    setCurrentView(computedView);
+    // Priority 1: History viewing
+    if (selectedHistoryEntry) {
+      if (selectedHistoryEntry.result) {
+        setCurrentView('history-result');
+        return;
+      }
+      if (selectedHistoryEntry.status === 'canceled') {
+        setCurrentView('history-cancel');
+        return;
+      }
+    }
+    
+    // Priority 2: Current search states
+    if (stage === 'processing') {
+      setCurrentView('progress');
+      return;
+    }
+    if (stage === 'complete' && result) {
+      setCurrentView('result');
+      return;
+    }
+    
+    // Priority 3: Default
+    setCurrentView('search-form');
   }, [stage, result, selectedHistoryEntry]);
 
   // Handle search submission with model parameters
@@ -81,9 +91,23 @@ export default function Home() {
     triggerSearch(query, model, writeModel);
   };
 
-  // History handlers
-  const handleToggleHistory = () => {
-    setShowHistory(!showHistory);
+  // Menu handlers
+  const handleToggleMenu = () => {
+    setShowMenu(!showMenu);
+  };
+
+  const handleNewSearch = () => {
+    resetSearch();
+    setSelectedHistoryEntry(null);
+  };
+
+  const handleOpenHistory = () => {
+    setShowHistory(true);
+  };
+
+  const handleOpenMarkdownViewer = () => {
+    // TODO: Implement markdown viewer functionality
+    console.log('Markdown viewer will be implemented later');
   };
 
   const handleSelectHistoryEntry = (entry: SearchHistoryEntry) => {
@@ -151,12 +175,11 @@ export default function Home() {
         }}>
           <div className="max-w-5xl mx-auto px-4 py-6">
             <div className="flex items-center justify-between">
-              {/* Left side - History Toggle */}
+              {/* Left side - Menu Button */}
               <div className="flex items-center gap-3">
-                <HistoryToggle
-                  onClick={handleToggleHistory}
-                  historyCount={entryCount}
-                  isOpen={showHistory}
+                <MenuButton
+                  onClick={handleToggleMenu}
+                  isOpen={showMenu}
                 />
               </div>
               
@@ -186,7 +209,7 @@ export default function Home() {
             <TaskRecoveryNotification
               recoverableTasks={recoverableTasks}
               isChecking={isChecking}
-              onViewHistory={() => setShowHistory(true)}
+              onViewHistory={handleOpenHistory}
             />
             
             {/* Error Display - Always visible when there's an error */}
@@ -361,6 +384,16 @@ export default function Home() {
             </div>
           </div>
         </footer>
+
+        {/* Main Menu Panel */}
+        <MainMenu
+          isOpen={showMenu}
+          onClose={() => setShowMenu(false)}
+          onNewSearch={handleNewSearch}
+          onOpenHistory={handleOpenHistory}
+          onOpenMarkdownViewer={handleOpenMarkdownViewer}
+          historyCount={entryCount}
+        />
 
         {/* Search History Panel */}
         <SearchHistory
