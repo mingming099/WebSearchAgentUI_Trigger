@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWebSearch } from "@/hooks/useWebSearch";
 import { useAuth } from "@/hooks/useAuth";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -8,6 +8,7 @@ import { useTaskRecovery } from "@/hooks/useTaskRecovery";
 import SearchForm from "@/components/SearchForm";
 import ProgressView from "@/components/ProgressView";
 import ResultView from "@/components/ResultView";
+import CancelView from "@/components/CancelView";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PasswordAuth from "@/components/PasswordAuth";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -15,6 +16,9 @@ import HistoryToggle from "@/components/HistoryToggle";
 import SearchHistory from "@/components/SearchHistory";
 import TaskRecoveryNotification from "@/components/TaskRecoveryNotification";
 import { SearchHistoryEntry } from "@/types/websearch";
+
+// View state type for single view management
+type ViewState = 'search-form' | 'progress' | 'result' | 'history-result' | 'history-cancel';
 
 export default function Home() {
   const { isAuthenticated, isLoading, authenticate } = useAuth();
@@ -36,9 +40,7 @@ export default function Home() {
     result,
     error,
     isLoading: searchLoading,
-    isComplete,
     hasError,
-    isIdle,
     isCanceling,
     triggerSearch,
     resetSearch,
@@ -48,8 +50,29 @@ export default function Home() {
   } = useWebSearch(addToHistory);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<SearchHistoryEntry | null>(null);
+  const [currentView, setCurrentView] = useState<ViewState>('search-form');
 
+  // Compute current view based on state
+  const getCurrentView = (): ViewState => {
+    // Priority 1: History viewing
+    if (selectedHistoryEntry) {
+      if (selectedHistoryEntry.result) return 'history-result';
+      if (selectedHistoryEntry.status === 'canceled') return 'history-cancel';
+    }
+    
+    // Priority 2: Current search states
+    if (stage === 'processing') return 'progress';
+    if (stage === 'complete' && result) return 'result';
+    
+    // Priority 3: Default
+    return 'search-form';
+  };
 
+  // Sync currentView with computed view state
+  useEffect(() => {
+    const computedView = getCurrentView();
+    setCurrentView(computedView);
+  }, [stage, result, selectedHistoryEntry]);
 
   // Handle search submission with model parameters
   const handleSearch = (query: string, model?: string, writeModel?: string) => {
@@ -166,108 +189,117 @@ export default function Home() {
               onViewHistory={() => setShowHistory(true)}
             />
             
-            {/* Search Form - Always visible but disabled during processing */}
-            {(isIdle || hasError) && (
-              <div className="space-y-4">
-                <SearchForm
-                  onSubmit={handleSearch}
-                  isLoading={searchLoading}
-                  disabled={searchLoading}
-                />
-                
-                {/* Error Display */}
-                {hasError && error && (
-                  <div className="rounded-lg p-4 theme-transition" style={{ 
-                    backgroundColor: 'var(--color-error-bg)', 
-                    borderColor: 'var(--color-error)',
-                    borderWidth: '1px'
-                  }}>
-                    <div className="flex items-start gap-3">
-                      <svg 
-                        className="w-5 h-5 mt-0.5 flex-shrink-0" 
-                        style={{ color: 'var(--color-error)' }}
-                        fill="currentColor" 
-                        viewBox="0 0 20 20"
+            {/* Error Display - Always visible when there's an error */}
+            {hasError && error && (
+              <div className="rounded-lg p-4 theme-transition" style={{ 
+                backgroundColor: 'var(--color-error-bg)', 
+                borderColor: 'var(--color-error)',
+                borderWidth: '1px'
+              }}>
+                <div className="flex items-start gap-3">
+                  <svg 
+                    className="w-5 h-5 mt-0.5 flex-shrink-0" 
+                    style={{ color: 'var(--color-error)' }}
+                    fill="currentColor" 
+                    viewBox="0 0 20 20"
+                  >
+                    <path 
+                      fillRule="evenodd" 
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" 
+                      clipRule="evenodd" 
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium mb-1" style={{ color: 'var(--color-error)' }}>
+                      Search Failed
+                    </h3>
+                    <p className="text-sm mb-3" style={{ color: 'var(--color-error)' }}>
+                      {error}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={retrySearch}
+                        className="px-3 py-1.5 text-sm rounded transition-colors theme-transition"
+                        style={{ 
+                          backgroundColor: 'var(--color-error)',
+                          color: 'var(--color-text-inverse)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.opacity = '0.9';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.opacity = '1';
+                        }}
                       >
-                        <path 
-                          fillRule="evenodd" 
-                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" 
-                          clipRule="evenodd" 
-                        />
-                      </svg>
-                      <div className="flex-1">
-                        <h3 className="text-sm font-medium mb-1" style={{ color: 'var(--color-error)' }}>
-                          Search Failed
-                        </h3>
-                        <p className="text-sm mb-3" style={{ color: 'var(--color-error)' }}>
-                          {error}
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={retrySearch}
-                            className="px-3 py-1.5 text-sm rounded transition-colors theme-transition"
-                            style={{ 
-                              backgroundColor: 'var(--color-error)',
-                              color: 'var(--color-text-inverse)'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.opacity = '0.9';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.opacity = '1';
-                            }}
-                          >
-                            Retry Search
-                          </button>
-                          <button
-                            onClick={resetSearch}
-                            className="px-3 py-1.5 text-sm rounded transition-colors theme-transition"
-                            style={{ 
-                              backgroundColor: 'var(--color-surface-hover)',
-                              color: 'var(--color-text)'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = 'var(--color-border-hover)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
-                            }}
-                          >
-                            New Search
-                          </button>
-                        </div>
-                      </div>
+                        Retry Search
+                      </button>
+                      <button
+                        onClick={resetSearch}
+                        className="px-3 py-1.5 text-sm rounded transition-colors theme-transition"
+                        style={{ 
+                          backgroundColor: 'var(--color-surface-hover)',
+                          color: 'var(--color-text)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--color-border-hover)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
+                        }}
+                      >
+                        New Search
+                      </button>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             )}
+            
+            {/* Single View Rendering */}
+            {currentView === 'search-form' && (
+              <SearchForm
+                onSubmit={handleSearch}
+                isLoading={searchLoading}
+                disabled={searchLoading}
+              />
+            )}
 
-            {/* Progress View - Shown during processing */}
-            <ProgressView
-              metadata={progress}
-              isVisible={stage === 'processing'}
-              onCancel={handleCancelTask}
-              isCanceling={isCanceling}
-            />
+            {currentView === 'progress' && (
+              <ProgressView
+                metadata={progress}
+                isVisible={true}
+                onCancel={handleCancelTask}
+                isCanceling={isCanceling}
+              />
+            )}
 
-            {/* Result View - Shown when complete or viewing history */}
-            {selectedHistoryEntry && selectedHistoryEntry.result ? (
+            {currentView === 'result' && result && (
+              <ResultView
+                result={result}
+                onNewSearch={resetSearch}
+                isVisible={true}
+              />
+            )}
+
+            {currentView === 'history-result' && selectedHistoryEntry?.result && (
               <ResultView
                 result={selectedHistoryEntry.result}
                 onNewSearch={handleBackToCurrentResult}
                 isVisible={true}
               />
-            ) : result && isComplete ? (
-              <ResultView
-                result={result}
-                onNewSearch={resetSearch}
-                isVisible={isComplete}
-              />
-            ) : null}
+            )}
 
-            {/* Current Query Display - Shown during processing and completion */}
-            {(stage === 'processing' || stage === 'complete') && query && (
+            {currentView === 'history-cancel' && selectedHistoryEntry && (
+              <CancelView
+                entry={selectedHistoryEntry}
+                onRetry={handleSearch}
+                onNewSearch={handleBackToCurrentResult}
+                isVisible={true}
+              />
+            )}
+
+            {/* Current Query Display - Only show during active searches */}
+            {(currentView === 'progress' || currentView === 'result') && query && (
               <div className="rounded-lg p-4 theme-transition" style={{ 
                 backgroundColor: 'var(--color-info-bg)', 
                 borderColor: 'var(--color-info)',
